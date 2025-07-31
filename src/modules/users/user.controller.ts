@@ -1,3 +1,5 @@
+// user.controller.ts => Xử lý logic các route
+
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { createUser, findUserByEmail } from './user.service'
 import { CreateUserInput, LoginInput } from './user.schema'
@@ -12,6 +14,7 @@ export async function registerUserHandler(
   const body = request.body
 
   try {
+    //Logic hash mật khẩu ở trong trong user.service.ts
     const user = await createUser(body)
     return reply.code(201).send(user)
   } catch (e) {
@@ -41,18 +44,14 @@ export async function loginHandler(
 
   try {
     const user = await findUserByEmail(body.email)
-    console.log(user)
+
     if (!user) {
       return reply.code(401).send({
         message: 'Invalid Email or Password!'
       })
     }
 
-    const correctPassword = verifyPassword({
-      candidatePassword: body.password,
-      salt: user.salt,
-      hash: user.password
-    })
+    const correctPassword = await verifyPassword(body.password, user.password)
 
     if (!correctPassword) {
       return reply.code(401).send({
@@ -60,7 +59,7 @@ export async function loginHandler(
       })
     }
 
-    const { password, salt, ...rest } = user
+    const { password, ...rest } = user
 
     const token = server.jwt.sign(rest)
     return reply.send({ access_token: token })

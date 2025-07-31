@@ -1,3 +1,5 @@
+// user.route.ts => Định nghĩa các route
+
 import { FastifyInstance } from 'fastify'
 import { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { loginHandler, registerUserHandler } from './user.controller'
@@ -36,4 +38,4 @@ async function userRoutes(server: FastifyInstance) {
   )
 }
 
-export default userRoutes
+export { userRoutes }

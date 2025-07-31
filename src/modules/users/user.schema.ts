@@ -1,3 +1,5 @@
+// user.schema.ts => Định nghĩa schema
+
 import { z } from 'zod'
 
 export const userSchema = z.object({
