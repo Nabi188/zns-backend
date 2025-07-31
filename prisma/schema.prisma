@@ -19,4 +19,6 @@ model User {
   email    String @unique
   name     String
   password String @db.Text
+
+  @@map("users")
 }

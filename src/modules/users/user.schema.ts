@@ -8,11 +8,11 @@ export const userSchema = z.object({
 })
 
 export const createUserSchema = userSchema.extend({
-  password: z.string().min(6, 'Password needs at least 6 characters')
+  password: z.string().min(5, 'Password needs at least 6 characters')
 })
 
 export const createUserResponseSchema = userSchema.extend({
-  id: z.number()
+  id: z.string()
 })
 
 export const loginSchema = z.object({
