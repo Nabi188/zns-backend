@@ -1,20 +1,20 @@
-// user.route.ts => Định nghĩa các route
+// auth.route.ts
 
 import { FastifyInstance } from 'fastify'
 import { ZodTypeProvider } from 'fastify-type-provider-zod'
-import { loginHandler, registerUserHandler } from './user.controller'
+import { loginHandler, meHandler, registerUserHandler } from './auth.controller'
 import {
   createUserSchema,
   createUserResponseSchema,
   loginSchema,
   loginResponseSchema
-} from './user.schema'
+} from './auth.schema'
 
-async function userRoutes(server: FastifyInstance) {
+async function authRoutes(server: FastifyInstance) {
   const router = server.withTypeProvider<ZodTypeProvider>()
 
   router.post(
-    '/',
+    '/create',
     {
       schema: {
         body: createUserSchema,
@@ -38,6 +38,16 @@ async function userRoutes(server: FastifyInstance) {
     },
     loginHandler
   )
+
+  router.get(
+    '/me',
+    {
+      schema: {
+        response: {}
+      }
+    },
+    meHandler
+  )
 }
 
-export { userRoutes }
+export { authRoutes }

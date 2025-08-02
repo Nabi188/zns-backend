@@ -3,29 +3,7 @@
 import { z } from 'zod'
 
 export const userSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  email: z.email('Invalid email format')
+  fullName: z.string().min(1, 'Name is required'),
+  email: z.email('Invalid email format'),
+  phone: z.string().optional()
 })
-
-export const createUserSchema = userSchema.extend({
-  password: z.string().min(5, 'Password needs at least 6 characters')
-})
-
-export const createUserResponseSchema = userSchema.extend({
-  id: z.string()
-})
-
-export const loginSchema = z.object({
-  email: z.email('invalid email format'),
-  password: z.string()
-})
-
-export const loginResponseSchema = z.object({
-  access_token: z.string()
-})
-
-export type LoginInput = z.infer<typeof loginSchema>
-export type LoginResponse = z.infer<typeof loginResponseSchema>
-
-export type CreateUserInput = z.infer<typeof createUserSchema>
-export type CreateUserResponse = z.infer<typeof createUserResponseSchema>
