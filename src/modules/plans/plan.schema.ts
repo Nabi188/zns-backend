@@ -18,7 +18,7 @@ export const createPlanResponseSchema = planSchema.extend({
 
 export const plansSchema = z.array(createPlanResponseSchema)
 
-export type Plan = z.infer<typeof planSchema>
-export type Plans = z.infer<typeof plansSchema>
 export type CreatePlanResponse = z.infer<typeof createPlanResponseSchema>
 export type CreatePlanInput = z.infer<typeof planSchema>
+export type Plan = z.infer<typeof planSchema>
+export type Plans = z.infer<typeof plansSchema>

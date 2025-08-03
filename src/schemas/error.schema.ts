@@ -1,3 +1,4 @@
+// schemas/error.schema.ts
 import { z } from 'zod'
 
 export const errorResponseSchema = z.object({

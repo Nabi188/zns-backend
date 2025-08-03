@@ -4,6 +4,7 @@ import { hashPassword } from '../src/utils/hash'
 import { Role } from '@/lib/generated/prisma'
 import { Plan } from '@/modules/plans'
 import { CreateUserInput } from '@/modules/auth'
+import { generateApiKey } from '@/utils/hash'
 
 async function main() {
   console.log('Start seeding...')
@@ -57,24 +58,17 @@ async function main() {
     }
   ]
 
-  // Xóa dữ liệu cũ > Không gây lỗi
+  // Xoá dữ liệu cũ
   await prisma.subscription.deleteMany()
   await prisma.tenantMember.deleteMany()
+  await prisma.apiKey.deleteMany()
   await prisma.tenant.deleteMany()
   await prisma.user.deleteMany()
   await prisma.plan.deleteMany()
 
   // Tạo plans
   for (const plan of plans) {
-    await prisma.plan.create({
-      data: {
-        name: plan.name,
-        monthlyFee: plan.monthlyFee,
-        messageFee: plan.messageFee,
-        maxUsers: plan.maxUsers,
-        isActive: plan.isActive
-      }
-    })
+    await prisma.plan.create({ data: plan })
   }
 
   // Tạo users
@@ -90,30 +84,48 @@ async function main() {
   }
 
   // Lấy user Bin
-  const onwerUser = await prisma.user.findUnique({
+  const ownerUser = await prisma.user.findUnique({
     where: { email: 'hello@digii.vn' }
   })
 
-  if (!onwerUser) {
-    throw new Error('Không tìm thấy user Bin')
-  }
+  if (!ownerUser) throw new Error('Không tìm thấy user Bin')
 
-  // Tạo tenant Digii Việt Nam, gán Bin làm owner và admin
+  // Tạo tenant
   const tenant = await prisma.tenant.create({
     data: {
       name: 'Digii Việt Nam',
-      ownerId: onwerUser.id,
+      ownerId: ownerUser.id,
       members: {
         create: {
-          userId: onwerUser.id,
+          userId: ownerUser.id,
           role: Role.admin
         }
       }
     }
   })
+  console.log(
+    `✅ Tenant "${tenant.name}" (tenant ID: ${tenant.id}) đã tạo và gán cho Bin làm owner.`
+  )
 
-  console.log(`✅ Tenant "${tenant.name}" đã tạo và gán cho Bin làm owner.`)
-  console.log('Seeding finished.')
+  // Tạo 2 API Key mẫu
+  const apiKeyNames = ['API main', 'API sub']
+  for (const name of apiKeyNames) {
+    const { prefix, keyHash, rawKey } = await generateApiKey()
+    await prisma.apiKey.create({
+      data: {
+        tenantId: tenant.id,
+        name,
+        prefix,
+        keyHash,
+        isActive: true
+      }
+    })
+    console.log(
+      `🔑 API key "${name}" created: prefix:${prefix} - ${rawKey} (⚠️ chỉ hiển thị 1 lần thôi)`
+    )
+  }
+
+  console.log('✅ Seeding finished.')
 }
 
 main()

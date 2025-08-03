@@ -1,6 +1,9 @@
 // src/app.ts
 
 // import { userRoutes } from '@/modules/users'
+import redis from '@/lib/redis'
+import { apiKeyRoutes } from '@/modules/api-keys'
+import { authRoutes } from '@/modules/auth'
 import { planRoutes } from '@/modules/plans'
 import jwt from '@fastify/jwt'
 import { fastify, FastifyReply, FastifyRequest } from 'fastify'
@@ -10,9 +13,7 @@ import {
   ZodTypeProvider
 } from 'fastify-type-provider-zod'
 import { envConfig } from './lib/envConfig'
-import redis from '@/lib/redis'
 import { prisma } from './lib/prisma'
-import { authRoutes } from '@/modules/auth'
 
 export const server = fastify({
   logger: {
@@ -74,6 +75,7 @@ async function registerRoutes() {
   // await server.register(userRoutes, { prefix: '/api/users' })
   await server.register(planRoutes, { prefix: '/api/plans' })
   await server.register(authRoutes, { prefix: '/api/auth' })
+  await server.register(apiKeyRoutes, { prefix: '/api/api-keys' })
 }
 
 async function main() {
