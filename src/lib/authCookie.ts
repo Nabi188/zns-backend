@@ -20,6 +20,7 @@ export function setAuthCookie(reply: FastifyReply, token: string) {
 export function clearAuthCookie(reply: FastifyReply) {
   reply.clearCookie('token', {
     ...cookieOptions,
+    // Thêm maxAge cho chắc
     maxAge: 0
   })
 }

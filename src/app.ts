@@ -15,6 +15,7 @@ import {
 } from 'fastify-type-provider-zod'
 import { envConfig } from './lib/envConfig'
 import { prisma } from './lib/prisma'
+import { healthcheckRoutes } from './modules/healthcheck'
 
 export const server = fastify({
   logger: {
@@ -62,29 +63,6 @@ server.decorate(
 )
 
 server.register(redis)
-// Check kết nói redis và db
-server.get(
-  '/healthcheck',
-  async function (request: FastifyRequest, reply: FastifyReply) {
-    await request.server.redis.set('healthcheck', 'OK', 'EX', 60)
-
-    const user = await prisma.user.findFirst({
-      select: { id: true }
-    })
-
-    let prisma_status = 'ERROR'
-    if (user) {
-      prisma_status = 'OK'
-    }
-
-    const redis_value = await request.server.redis.get('healthcheck')
-
-    return reply.code(200).send({
-      redis: redis_value,
-      db: prisma_status
-    })
-  }
-)
 
 // Register routes
 async function registerRoutes() {
@@ -92,6 +70,7 @@ async function registerRoutes() {
   await server.register(planRoutes, { prefix: '/api/plans' })
   await server.register(authRoutes, { prefix: '/api/auth' })
   await server.register(apiKeyRoutes, { prefix: '/api/api-keys' })
+  await server.register(healthcheckRoutes, { prefix: '/api/healthcheck' })
 }
 
 async function main() {
@@ -107,7 +86,7 @@ async function main() {
       `Server is running at http://${envConfig.BASE_URL}:${envConfig.PORT}`
     )
     server.log.info(
-      `Health check available at http://${envConfig.BASE_URL}:${envConfig.PORT}/healthcheck`
+      `Health check available at http://${envConfig.BASE_URL}:${envConfig.PORT}/api/healthcheck`
     )
   } catch (e) {
     console.error(e)
