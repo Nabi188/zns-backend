@@ -1,10 +1,17 @@
 import { FastifyInstance } from 'fastify'
-import { createApiKeyHandler, getApiKeysHandler } from './api-key.controller'
+import {
+  createApiKeyHandler,
+  getApiKeysHandler,
+  updateApiKeyHandler
+} from './api-key.controller'
 import {
   createApiKeyRequestSchema,
   createApiKeyResponseSchema,
-  apiKeysSchema,
-  getApiKeysQuerySchema
+  getApiKeysResponseSchema,
+  getApiKeysQuerySchema,
+  updateApiKeyRequestSchema,
+  apiKeyBaseSchema,
+  updateApiKeyParamsSchema
 } from './api-key.schema'
 import { errorResponseSchema } from '@/schemas/error.schema'
 import { ZodTypeProvider } from 'fastify-type-provider-zod'
@@ -33,11 +40,26 @@ export async function apiKeyRoutes(server: FastifyInstance) {
       schema: {
         querystring: getApiKeysQuerySchema,
         response: {
-          200: apiKeysSchema,
+          200: getApiKeysResponseSchema,
           500: errorResponseSchema
         }
       }
     },
     getApiKeysHandler
+  )
+  router.patch(
+    '/:id',
+    {
+      schema: {
+        params: updateApiKeyParamsSchema,
+        body: updateApiKeyRequestSchema,
+        response: {
+          200: apiKeyBaseSchema,
+          404: errorResponseSchema,
+          500: errorResponseSchema
+        }
+      }
+    },
+    updateApiKeyHandler
   )
 }

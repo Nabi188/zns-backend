@@ -48,3 +48,21 @@ export async function findUserByEmail(email: string) {
     }
   })
 }
+
+export async function findUserTenant(userId: string, tenantId: string) {
+  return prisma.tenantMember.findFirst({
+    where: {
+      tenantId,
+      userId
+    },
+    select: {
+      role: true,
+      tenant: {
+        select: {
+          id: true,
+          name: true
+        }
+      }
+    }
+  })
+}

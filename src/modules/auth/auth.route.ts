@@ -2,12 +2,20 @@
 
 import { FastifyInstance } from 'fastify'
 import { ZodTypeProvider } from 'fastify-type-provider-zod'
-import { loginHandler, meHandler, registerUserHandler } from './auth.controller'
+import {
+  loginHandler,
+  meHandler,
+  registerUserHandler,
+  selectTenantHandler
+} from './auth.controller'
 import {
   createUserSchema,
   createUserResponseSchema,
   loginSchema,
-  loginResponseSchema
+  loginResponseSchema,
+  selectTenantSchema,
+  selectTenantResponseSchema,
+  meResponseSchema
 } from './auth.schema'
 
 async function authRoutes(server: FastifyInstance) {
@@ -32,21 +40,39 @@ async function authRoutes(server: FastifyInstance) {
       schema: {
         body: loginSchema,
         response: {
-          201: loginResponseSchema
+          200: loginResponseSchema
         }
       }
     },
     loginHandler
   )
 
+  //TODO: Chưa làm me handler
   router.get(
     '/me',
     {
+      preHandler: [server.authenticate],
       schema: {
-        response: {}
+        response: {
+          200: meResponseSchema
+        }
       }
     },
     meHandler
+  )
+
+  router.post(
+    '/select-tenant',
+    {
+      preHandler: [server.authenticate],
+      schema: {
+        body: selectTenantSchema,
+        response: {
+          200: selectTenantResponseSchema
+        }
+      }
+    },
+    selectTenantHandler
   )
 }
 

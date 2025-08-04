@@ -1,10 +1,11 @@
 // src/app.ts
 
-// import { userRoutes } from '@/modules/users'
 import redis from '@/lib/redis'
 import { apiKeyRoutes } from '@/modules/api-keys'
 import { authRoutes } from '@/modules/auth'
 import { planRoutes } from '@/modules/plans'
+import fastifyCookie from '@fastify/cookie'
+import cors from '@fastify/cors'
 import jwt from '@fastify/jwt'
 import { fastify, FastifyReply, FastifyRequest } from 'fastify'
 import {
@@ -29,23 +30,38 @@ export const server = fastify({
 server.setValidatorCompiler(validatorCompiler)
 server.setSerializerCompiler(serializerCompiler)
 
+server.register(fastifyCookie)
 server.register(jwt, {
-  secret: envConfig.JWT_SECRET
+  secret: envConfig.JWT_SECRET,
+  cookie: {
+    cookieName: 'token',
+    signed: false
+  }
 })
 
-server.register(redis)
+// Cần thêm CORS để không lỗi trên trình duyệt (APIDog hay postman thì ko lỗi hehe)
+server.register(cors, {
+  origin: envConfig.FRONTEND_URL,
+  credentials: true
+})
 
 server.decorate(
-  'auth',
+  'authenticate',
   async (request: FastifyRequest, reply: FastifyReply) => {
     try {
+      // Verify JWT từ cookie thay vì header
       await request.jwtVerify()
     } catch (e) {
-      return reply.send(e)
+      return reply.code(401).send({
+        statusCode: 401,
+        error: 'Unauthorized',
+        message: 'Invalid or missing token'
+      })
     }
   }
 )
 
+server.register(redis)
 // Check kết nói redis và db
 server.get(
   '/healthcheck',

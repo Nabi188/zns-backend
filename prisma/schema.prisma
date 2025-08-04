@@ -63,6 +63,7 @@ model User {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   tenants     TenantMember[]
+  apikeys     ApiKey[]
   ownedTenant Tenant[]       @relation("TenantOwner")
 
   @@map("users")
@@ -79,7 +80,7 @@ model Tenant {
   owner   User           @relation("TenantOwner", fields: [ownerId], references: [id])
   members TenantMember[]
 
-  // Financial
+  // Financial => Tách ra các khoản phí và refund cho rõ ràng
   messageCharges      MessageCharge[]
   subscriptionCharges SubscriptionCharge[]
   topupTransactions   TopupTransaction[]
@@ -176,6 +177,7 @@ model ZaloOa {
 model ApiKey {
   id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenantId   String    @map("tenant_id") @db.Uuid
+  creatorId  String    @map("creator_id") @db.Uuid
   keyHash    String    @unique @map("key_hash")
   prefix     String
   name       String
@@ -183,20 +185,26 @@ model ApiKey {
   isActive   Boolean   @map("is_active")
   createdAt  DateTime  @default(now()) @map("created_at")
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant  Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator User   @relation(fields: [creatorId], references: [id], onDelete: Cascade)
 
   @@map("api_keys")
 }
 
 model ZnsTemplate {
-  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId       String   @map("tenant_id") @db.Uuid
-  templateId     String   @unique @map("template_id")
-  templateName   String   @map("template_name")
-  costPerMessage Int      @map("cost_per_message")
-  templateParams Json     @map("template_params")
-  isActive       Boolean  @map("is_active")
-  createdAt      DateTime @default(now()) @map("created_at")
+  id              String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String  @map("tenant_id") @db.Uuid
+  templateId      String  @unique @map("template_id")
+  templateName    String  @map("template_name")
+  isActive        Boolean @map("is_active") //Của hệ thống chứ ko phải của Zalo
+  price           Int     @map("price")
+  listParams      Json?   @map("template_params")
+  previewUrl      String  @map("preview_url")
+  timeout         Int
+  templateQuality String? @map("template_quality")
+  templateTag     String  @map("template_tag")
+
+  createdAt DateTime @default(now()) @map("created_at")
 
   tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   messageLogs MessageLog[]
@@ -259,7 +267,7 @@ model MessageCharge {
   tenantId     String            @map("tenant_id") @db.Uuid
   messageLogId String            @unique @map("message_log_id") @db.Uuid
   amount       Int
-  baseZnsCost  Int               @map("base_zns_cost")
+  baseZnsFee   Int               @map("base_zns_fee")
   deliveryFee  Int               @map("delivery_fee")
   platformFee  Int               @map("platform_fee")
   vatAmount    Int               @map("vat_amount")

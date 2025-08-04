@@ -1,4 +1,4 @@
-// auth.schema.ts => Đinh nghĩa scheama
+// auth.schema.ts => Định nghĩa schema
 import { z } from 'zod'
 import { userSchema } from '../users'
 import { tenantDetailsSchema } from '../tenants/tenant.schema'
@@ -19,15 +19,46 @@ export const loginSchema = z.object({
 })
 
 export const loginResponseSchema = z.object({
-  access_token: z.string()
+  user: z.object({
+    id: z.string(),
+    email: z.string(),
+    fullName: z.string()
+  }),
+  tenants: z.array(
+    z.object({
+      tenantId: z.string(),
+      name: z.string(),
+      role: z.string()
+    })
+  )
 })
 
 export const meResponseSchema = createUserResponseSchema.extend({
   tenants: z.array(tenantDetailsSchema).optional()
 })
 
-// Types
+export const selectTenantSchema = z.object({
+  tenantId: z.string()
+})
+
+// Schema cho response của selectTenant - trả về dữ liệu cho FE
+export const selectTenantResponseSchema = z.object({
+  success: z.literal(true),
+  user: z.object({
+    id: z.string(),
+    email: z.string(),
+    currentTenant: z.object({
+      tenantId: z.string(),
+      name: z.string(),
+      role: z.string()
+    })
+  })
+})
+
 export type LoginInput = z.infer<typeof loginSchema>
 export type LoginResponse = z.infer<typeof loginResponseSchema>
 export type CreateUserInput = z.infer<typeof createUserSchema>
 export type CreateUserResponse = z.infer<typeof createUserResponseSchema>
+export type SelectTenantInput = z.infer<typeof selectTenantSchema>
+export type SelectTenantResponse = z.infer<typeof selectTenantResponseSchema>
+export type MeResponse = z.infer<typeof meResponseSchema>

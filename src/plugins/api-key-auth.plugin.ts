@@ -1,9 +1,11 @@
+//plugins-key-auth.plugin.ts
+
 import { FastifyInstance } from 'fastify'
 import { verifyApiKey } from '@/modules/api-keys/api-key.service'
 
 declare module 'fastify' {
   interface FastifyRequest {
-    tenantId?: string
+    apiKeyTenantId?: string
   }
 }
 
@@ -17,7 +19,7 @@ export async function apiKeyAuthPlugin(fastify: FastifyInstance) {
     try {
       const apiKey = auth.replace('Bearer ', '')
       const record = await verifyApiKey(apiKey)
-      request.tenantId = record.tenantId
+      request.apiKeyTenantId = record.tenantId
     } catch {
       return reply.status(401).send({ message: 'Invalid API key' })
     }

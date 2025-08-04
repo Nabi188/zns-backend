@@ -9,3 +9,5 @@ node_modules
 # Docker volumes and configs
 /docker/database/postgres_data/ 
 /docker/database/redis_data/
+
+seed-result.md

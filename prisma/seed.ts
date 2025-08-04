@@ -1,13 +1,28 @@
-// prisma/seed.ts
 import { prisma } from '@/lib/prisma'
 import { hashPassword } from '../src/utils/hash'
 import { Role } from '@/lib/generated/prisma'
 import { Plan } from '@/modules/plans'
 import { CreateUserInput } from '@/modules/auth'
 import { generateApiKey } from '@/utils/hash'
+import fs from 'fs/promises'
+import path from 'path'
+
+let log = '# Seed result\n\n'
+
+function addSection(title: string, lines: string[]) {
+  log += `## ${title}\n`
+  lines.forEach((line) => {
+    log += `- ${line}\n`
+  })
+  log += '\n'
+}
 
 async function main() {
-  console.log('Start seeding...')
+  const planLogs: string[] = []
+  const userLogs: string[] = []
+  const apiKeyLogs: string[] = []
+
+  log += '🚀 Bắt đầu seeding...\n\n'
 
   const users: CreateUserInput[] = [
     {
@@ -65,10 +80,12 @@ async function main() {
   await prisma.tenant.deleteMany()
   await prisma.user.deleteMany()
   await prisma.plan.deleteMany()
+  log += '🗑️ Đã xoá toàn bộ dữ liệu cũ\n\n'
 
   // Tạo plans
   for (const plan of plans) {
     await prisma.plan.create({ data: plan })
+    planLogs.push(`Plan "${plan.name}"`)
   }
 
   // Tạo users
@@ -81,14 +98,19 @@ async function main() {
         password: hashedPassword
       }
     })
+    userLogs.push(`${user.fullName} (${user.email})`)
   }
+
+  // Ghi log plans & users
+  addSection('Plans đã tạo', planLogs)
+  addSection('Users đã tạo', userLogs)
 
   // Lấy user Bin
   const ownerUser = await prisma.user.findUnique({
     where: { email: 'hello@digii.vn' }
   })
 
-  if (!ownerUser) throw new Error('Không tìm thấy user Bin')
+  if (!ownerUser) throw new Error('❌ Không tìm thấy user Bin')
 
   // Tạo tenant
   const tenant = await prisma.tenant.create({
@@ -103,9 +125,7 @@ async function main() {
       }
     }
   })
-  console.log(
-    `✅ Tenant "${tenant.name}" (tenant ID: ${tenant.id}) đã tạo và gán cho Bin làm owner.`
-  )
+  log += `🏢 Tenant "${tenant.name}" (ID: \`${tenant.id}\`) đã tạo và gán cho Bin làm owner.\n\n`
 
   // Tạo 2 API Key mẫu
   const apiKeyNames = ['API main', 'API sub']
@@ -114,18 +134,30 @@ async function main() {
     await prisma.apiKey.create({
       data: {
         tenantId: tenant.id,
+        creatorId: ownerUser.id,
         name,
         prefix,
         keyHash,
         isActive: true
       }
     })
-    console.log(
-      `🔑 API key "${name}" created: prefix:${prefix} - ${rawKey} (⚠️ chỉ hiển thị 1 lần thôi)`
-    )
+    apiKeyLogs.push(`"${name}": prefix \`${prefix}\`, raw key \`${rawKey}\` `)
   }
 
-  console.log('✅ Seeding finished.')
+  addSection(`API Keys đã tạo cho tổ chức ${tenant.name}`, apiKeyLogs)
+
+  const formatVNDate = (d = new Date()) =>
+    new Intl.DateTimeFormat('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    }).format(d)
+
+  log += `✅ Hoàn thành seeding (${formatVNDate()})`
 }
 
 main()
@@ -135,4 +167,7 @@ main()
   })
   .finally(async () => {
     await prisma.$disconnect()
+    const outPath = path.resolve(__dirname, 'seed-result.md')
+    await fs.writeFile(outPath, log, 'utf8')
+    console.log(`📄 Đã ghi kết quả ra file: ${outPath}`)
   })
