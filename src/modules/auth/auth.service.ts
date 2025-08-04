@@ -37,7 +37,7 @@ export async function findUserByEmail(email: string) {
             select: {
               id: true,
               name: true,
-              balance: true,
+              // balance: true, //Bỏ đi không cần trả về balance ở đây mà tách sang service của tài chính đúng hơn
               ownerId: true,
               createdAt: true,
               updatedAt: true
@@ -61,6 +61,34 @@ export async function findUserTenant(userId: string, tenantId: string) {
         select: {
           id: true,
           name: true
+        }
+      }
+    }
+  })
+}
+
+export async function findUserById(userId: string) {
+  return prisma.user.findUnique({
+    where: {
+      id: userId
+    },
+    select: {
+      id: true,
+      email: true,
+      fullName: true,
+      createdAt: true,
+      updatedAt: true,
+      tenants: {
+        select: {
+          role: true,
+          tenant: {
+            select: {
+              id: true,
+              name: true,
+              createdAt: true,
+              updatedAt: true
+            }
+          }
         }
       }
     }

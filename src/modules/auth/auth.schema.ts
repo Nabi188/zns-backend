@@ -33,8 +33,16 @@ export const loginResponseSchema = z.object({
   )
 })
 
+const meTenantSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  role: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date()
+})
+
 export const meResponseSchema = createUserResponseSchema.extend({
-  tenants: z.array(tenantDetailsSchema).optional()
+  tenants: z.array(meTenantSchema)
 })
 
 export const selectTenantSchema = z.object({
@@ -53,6 +61,10 @@ export const selectTenantResponseSchema = z.object({
       role: z.string()
     })
   })
+})
+
+export const logoutResponseSchema = z.object({
+  message: z.literal('Logout successful')
 })
 
 export type LoginInput = z.infer<typeof loginSchema>

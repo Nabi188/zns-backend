@@ -1,12 +1,18 @@
 //auth.controler.ts => Xử lý các request từ client
 
 import { FastifyReply, FastifyRequest } from 'fastify'
-import { createUser, findUserByEmail, findUserTenant } from './auth.service'
+import {
+  createUser,
+  findUserByEmail,
+  findUserById,
+  findUserTenant
+} from './auth.service'
 import { CreateUserInput, LoginInput, SelectTenantInput } from './auth.schema'
 import { Prisma } from '@/lib/generated/prisma'
 import { verifyPassword } from '@/utils/hash'
 import { server } from '@/app'
 import { envConfig } from '@/lib/envConfig'
+import { clearAuthCookie, setAuthCookie } from '@/lib/authCookie'
 
 export async function registerUserHandler(
   request: FastifyRequest<{ Body: CreateUserInput }>,
@@ -86,13 +92,27 @@ export async function loginHandler(
   const body = request.body
   try {
     const user = await findUserByEmail(body.email)
-    if (!user) {
-      return reply.code(401).send({ message: 'Invalid Email or Password!' })
-    }
+    // if (!user) {
+    //   return reply.code(401).send({
+    //     error: 'Unauthorized',
+    //     message: 'Invalid Email or Password!'
+    //   })
+    // }
 
-    const correctPassword = await verifyPassword(body.password, user.password)
-    if (!correctPassword) {
-      return reply.code(401).send({ message: 'Invalid Email or Password!' })
+    // const correctPassword = await verifyPassword(body.password, user.password)
+    // if (!correctPassword) {
+    //   return reply.code(401).send({
+    //     error: 'Unauthorized',
+    //     message: 'Invalid Email or Password!'
+    //   })
+    // }
+
+    // gom logic check user và password
+    if (!user || !(await verifyPassword(body.password, user.password))) {
+      return reply.code(401).send({
+        error: 'Unauthorized',
+        message: 'Invalid Email or Password!'
+      })
     }
 
     // JWT lúc đầu chỉ chứa userId và email thôi > Chọn tenant cập nhật lại JWT mới
@@ -103,17 +123,19 @@ export async function loginHandler(
 
     const token = await server.jwt.sign(tokenPayload)
 
-    reply.setCookie('token', token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'none',
-      path: '/',
-      domain:
-        envConfig.NODE_ENV === 'production'
-          ? envConfig.FRONTEND_DOMAIN
-          : undefined,
-      maxAge: envConfig.JWT_MAX_AGE
-    })
+    // reply.setCookie('token', token, {
+    //   httpOnly: true,
+    //   secure: true,
+    //   sameSite: 'none',
+    //   path: '/',
+    //   domain:
+    //     envConfig.NODE_ENV === 'production'
+    //       ? envConfig.FRONTEND_DOMAIN
+    //       : undefined,
+    //   maxAge: envConfig.JWT_MAX_AGE
+    // })
+
+    setAuthCookie(reply, token)
 
     return reply.send({
       user: {
@@ -149,24 +171,26 @@ export async function selectTenantHandler(
       return reply.code(403).send({ message: 'Access denied' })
     }
 
-    const newToken = await request.server.jwt.sign({
+    const token = await request.server.jwt.sign({
       id: user.id,
       email: user.email,
       tenantId,
       role: tenant.role
     })
 
-    reply.setCookie('token', newToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'none',
-      path: '/',
-      domain:
-        envConfig.NODE_ENV === 'production'
-          ? envConfig.FRONTEND_DOMAIN
-          : undefined,
-      maxAge: envConfig.JWT_MAX_AGE
-    })
+    // reply.setCookie('token', token, {
+    //   httpOnly: true,
+    //   secure: true,
+    //   sameSite: 'none',
+    //   path: '/',
+    //   domain:
+    //     envConfig.NODE_ENV === 'production'
+    //       ? envConfig.FRONTEND_DOMAIN
+    //       : undefined,
+    //   maxAge: envConfig.JWT_MAX_AGE
+    // })
+
+    setAuthCookie(reply, token)
 
     return reply.send({
       success: true,
@@ -190,4 +214,63 @@ export async function selectTenantHandler(
 }
 
 // TODO: Làm me handler
-export async function meHandler() {}
+
+export async function meHandler(request: FastifyRequest, reply: FastifyReply) {
+  const user = request.user
+
+  try {
+    // Luông phải kiểm tra xem user còn nằm trong tenant không, tránh trương f hợp user bị xoá khỏi tenant rồi mà cookie vẫn còn hạn > Vẫn xem được dữ liệu
+    if (user.tenantId) {
+      const isMember = await findUserTenant(user.id, user.tenantId)
+      if (!isMember) {
+        return reply.code(403).send({
+          error: 'Forbidden',
+          message: 'User is no longer a member of the current tenant'
+        })
+      }
+    }
+
+    const fullUser = await findUserById(user.id)
+
+    if (!fullUser) {
+      return reply.code(404).send({
+        error: 'Not Found',
+        message: 'User not found'
+      })
+    }
+
+    return reply.send({
+      ...fullUser,
+      tenants: fullUser.tenants.map((t) => ({
+        id: t.tenant.id,
+        name: t.tenant.name,
+        role: t.role,
+        createdAt: t.tenant.createdAt,
+        updatedAt: t.tenant.updatedAt
+      }))
+    })
+  } catch (e) {
+    console.error(e)
+    return reply.code(500).send({
+      error: 'Internal server error',
+      message: 'Failed to get user data'
+    })
+  }
+}
+
+export async function logoutHandler(
+  _request: FastifyRequest,
+  reply: FastifyReply
+) {
+  try {
+    clearAuthCookie(reply)
+
+    return reply.code(200).send({ message: 'Logout successful' })
+  } catch (e) {
+    console.error(e)
+    return reply.code(500).send({
+      error: 'Internal server error',
+      message: 'Failed to log out'
+    })
+  }
+}

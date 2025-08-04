@@ -4,6 +4,7 @@ import { FastifyInstance } from 'fastify'
 import { ZodTypeProvider } from 'fastify-type-provider-zod'
 import {
   loginHandler,
+  logoutHandler,
   meHandler,
   registerUserHandler,
   selectTenantHandler
@@ -15,8 +16,10 @@ import {
   loginResponseSchema,
   selectTenantSchema,
   selectTenantResponseSchema,
-  meResponseSchema
+  meResponseSchema,
+  logoutResponseSchema
 } from './auth.schema'
+import { errorResponseSchema } from '@/schemas/error.schema'
 
 async function authRoutes(server: FastifyInstance) {
   const router = server.withTypeProvider<ZodTypeProvider>()
@@ -27,7 +30,9 @@ async function authRoutes(server: FastifyInstance) {
       schema: {
         body: createUserSchema,
         response: {
-          201: createUserResponseSchema
+          201: createUserResponseSchema,
+          409: errorResponseSchema,
+          500: errorResponseSchema
         }
       }
     },
@@ -40,7 +45,9 @@ async function authRoutes(server: FastifyInstance) {
       schema: {
         body: loginSchema,
         response: {
-          200: loginResponseSchema
+          200: loginResponseSchema,
+          401: errorResponseSchema,
+          500: errorResponseSchema
         }
       }
     },
@@ -54,7 +61,9 @@ async function authRoutes(server: FastifyInstance) {
       preHandler: [server.authenticate],
       schema: {
         response: {
-          200: meResponseSchema
+          200: meResponseSchema,
+          403: errorResponseSchema,
+          404: errorResponseSchema
         }
       }
     },
@@ -68,11 +77,25 @@ async function authRoutes(server: FastifyInstance) {
       schema: {
         body: selectTenantSchema,
         response: {
-          200: selectTenantResponseSchema
+          200: selectTenantResponseSchema,
+          500: errorResponseSchema
         }
       }
     },
     selectTenantHandler
+  )
+
+  server.get(
+    '/logout',
+    {
+      schema: {
+        response: {
+          200: logoutResponseSchema,
+          500: errorResponseSchema
+        }
+      }
+    },
+    logoutHandler
   )
 }
 
