@@ -1,7 +1,6 @@
 // auth.schema.ts => Định nghĩa schema
 import { z } from 'zod'
 import { userSchema } from '../users'
-import { tenantDetailsSchema } from '../tenants/tenant.schema'
 
 export const createUserSchema = userSchema.extend({
   password: z.string().min(6, 'Password needs at least 6 characters')
@@ -15,7 +14,7 @@ export const createUserResponseSchema = userSchema.extend({
 
 export const loginSchema = z.object({
   email: z.email('Invalid email format'),
-  password: z.string()
+  password: z.string().min(1, 'Password is required!')
 })
 
 export const loginResponseSchema = z.object({

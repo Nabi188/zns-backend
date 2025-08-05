@@ -14,7 +14,7 @@ import {
   ZodTypeProvider
 } from 'fastify-type-provider-zod'
 import { envConfig } from './lib/envConfig'
-import { prisma } from './lib/prisma'
+import { globalErrorHandler } from '@/lib/error-handler'
 import { healthcheckRoutes } from './modules/healthcheck'
 
 export const server = fastify({
@@ -30,6 +30,8 @@ export const server = fastify({
 
 server.setValidatorCompiler(validatorCompiler)
 server.setSerializerCompiler(serializerCompiler)
+
+server.setErrorHandler(globalErrorHandler)
 
 server.register(fastifyCookie)
 server.register(jwt, {
