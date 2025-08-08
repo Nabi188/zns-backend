@@ -11,3 +11,4 @@ node_modules
 /docker/database/redis_data/
 
 seed-result.md
+cookies.txt
