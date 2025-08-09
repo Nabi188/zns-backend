@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import { hashPassword } from '../src/utils/hash'
+import { hashPassword } from '../utils/hash'
 import { Role } from '@/lib/generated/prisma'
 import { Plan } from '@/modules/plans'
 import { CreateUserInput } from '@/modules/auth'
@@ -30,21 +30,24 @@ async function main() {
       email: 'alice@example.com',
       password: 'password123',
       avatarUrl:
-        'https://res.cloudinary.com/djlfx1adk/image/upload/v1704342262/rijmlovslazlhm9nu9jm.jpg'
+        'https://res.cloudinary.com/djlfx1adk/image/upload/v1704342262/rijmlovslazlhm9nu9jm.jpg',
+      isVerified: false
     },
     {
       fullName: 'Bob',
       email: 'bob@example.com',
       password: 'password123',
       avatarUrl:
-        'https://res.cloudinary.com/djlfx1adk/image/upload/v1704342262/rijmlovslazlhm9nu9jm.jpg'
+        'https://res.cloudinary.com/djlfx1adk/image/upload/v1704342262/rijmlovslazlhm9nu9jm.jpg',
+      isVerified: false
     },
     {
       fullName: 'Bin',
       email: 'hello@digii.vn',
       password: 'hello',
       avatarUrl:
-        'https://res.cloudinary.com/djlfx1adk/image/upload/v1704342262/rijmlovslazlhm9nu9jm.jpg'
+        'https://res.cloudinary.com/djlfx1adk/image/upload/v1704342262/rijmlovslazlhm9nu9jm.jpg',
+      isVerified: true
     }
   ]
 

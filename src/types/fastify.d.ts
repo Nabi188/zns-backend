@@ -1,11 +1,12 @@
 // types/fastify.d.ts
-
 import 'fastify'
 import '@fastify/jwt'
 import { FastifyRequest, FastifyReply } from 'fastify'
+import type { Transporter } from 'nodemailer'
 
 declare module 'fastify' {
   interface FastifyInstance {
+    nodemailer: Transporter
     authenticate: (
       request: FastifyRequest,
       reply: FastifyReply
@@ -18,12 +19,14 @@ declare module '@fastify/jwt' {
     payload: {
       id: string
       email: string
+      isVerified: boolean
       tenantId?: string
       role?: string
     }
     user: {
       id: string
       email: string
+      isVerified: boolean
       tenantId?: string
       role?: string
     }

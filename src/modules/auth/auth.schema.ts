@@ -24,6 +24,7 @@ export const loginResponseSchema = z.object({
     email: z.string(),
     fullName: z.string(),
     avatarUrl: z.string().optional(),
+    isVerified: z.boolean(),
     createdAt: z.date(),
     updatedAt: z.date()
   }),
@@ -48,7 +49,7 @@ const meTenantSchema = z.object({
 })
 
 export const meResponseSchema = createUserResponseSchema.extend({
-  currentTenant: currentTenantSchema,
+  currentTenant: currentTenantSchema.nullable(),
   tenants: z.array(meTenantSchema)
 })
 

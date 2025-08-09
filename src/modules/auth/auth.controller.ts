@@ -13,6 +13,8 @@ import { verifyPassword } from '@/utils/hash'
 import { server } from '@/app'
 import { clearAuthCookie, setAuthCookie } from '@/lib/authCookie'
 import { getTenantsById } from '../tenants/tenant.service'
+import { sendVerificationOTP, verifyOTP } from './verification.service'
+import { SendOtpInput, VerifyOtpInput } from './verification.schema'
 
 export async function registerUserHandler(
   request: FastifyRequest<{ Body: CreateUserInput }>,
@@ -21,20 +23,18 @@ export async function registerUserHandler(
   const body = request.body
 
   try {
+    const existingUser = await findUserByEmail(body.email)
+    if (existingUser) {
+      return reply.code(409).send({
+        error: 'Conflict',
+        message: 'Email already exists'
+      })
+    }
+
     const user = await createUser(body)
     return reply.code(201).send(user)
   } catch (e) {
     console.error(e)
-
-    if (e instanceof Prisma.PrismaClientKnownRequestError) {
-      if (e.code === 'P2002') {
-        return reply.code(409).send({
-          error: 'Conflict',
-          message: 'Email already exists'
-        })
-      }
-    }
-
     return reply.code(500).send({
       error: 'Internal server error',
       message: 'Failed to create user'
@@ -62,7 +62,8 @@ export async function loginHandler(
     // JWT lúc đầu chỉ chứa userId và email thôi > Chọn tenant cập nhật lại JWT mới
     const tokenPayload = {
       id: user.id,
-      email: user.email
+      email: user.email,
+      isVerified: user.isVerified
     }
 
     const token = await server.jwt.sign(tokenPayload)
@@ -75,6 +76,7 @@ export async function loginHandler(
         email: user.email,
         fullName: user.fullName,
         avatarUrl: user.avatarUrl,
+        isVerified: user.isVerified,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt
       },
@@ -95,6 +97,47 @@ export async function loginHandler(
   }
 }
 
+export async function sendOTPHandler(
+  request: FastifyRequest,
+  reply: FastifyReply
+) {
+  const { id, email } = request.user
+
+  const result = await sendVerificationOTP(request.server, id, email)
+
+  if (result?.error) {
+    return reply
+      .code(Number(result.error) || 400)
+      .send({ error: result.error, message: result.message })
+  }
+
+  return reply.code(200).send(result)
+}
+
+export async function verifyOTPHandler(
+  request: FastifyRequest,
+  reply: FastifyReply
+) {
+  const { otp } = request.body as VerifyOtpInput
+
+  const ok = await verifyOTP(request.server, request.user.id, otp)
+
+  if (!ok) {
+    return reply
+      .code(400)
+      .send({ error: 'Invalid OTP', message: 'Invalid or expired OTP' })
+  }
+
+  // tạo JWT mới với isVerified = true
+  const newToken = await request.server.jwt.sign({
+    ...request.user,
+    isVerified: true
+  })
+  setAuthCookie(reply, newToken)
+
+  return reply.code(200).send({ message: 'Email verified successfully' })
+}
+
 export async function selectTenantHandler(
   request: FastifyRequest,
   reply: FastifyReply
@@ -111,6 +154,7 @@ export async function selectTenantHandler(
     const token = await request.server.jwt.sign({
       id: user.id,
       email: user.email,
+      isVerified: user.isVerified,
       tenantId,
       role: tenant.role
     })
@@ -161,6 +205,13 @@ export async function meHandler(request: FastifyRequest, reply: FastifyReply) {
       return reply.code(404).send({
         error: 'Not Found',
         message: 'User not found'
+      })
+    }
+
+    if (!fullUser.isVerified) {
+      return reply.code(403).send({
+        error: 'Not Verified',
+        message: 'Please verify your email before continuing'
       })
     }
 

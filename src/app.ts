@@ -1,5 +1,6 @@
 // src/app.ts
 
+import { globalErrorHandler } from '@/lib/error-handler'
 import redis from '@/lib/redis'
 import { apiKeyRoutes } from '@/modules/api-keys'
 import { authRoutes } from '@/modules/auth'
@@ -14,8 +15,8 @@ import {
   ZodTypeProvider
 } from 'fastify-type-provider-zod'
 import { envConfig } from './lib/envConfig'
-import { globalErrorHandler } from '@/lib/error-handler'
 import { healthcheckRoutes } from './modules/healthcheck'
+import nodemailerPlugin from './plugins/nodemailer'
 
 export const server = fastify({
   logger: {
@@ -27,6 +28,8 @@ export const server = fastify({
     }
   }
 }).withTypeProvider<ZodTypeProvider>()
+
+server.register(nodemailerPlugin)
 
 server.setValidatorCompiler(validatorCompiler)
 server.setSerializerCompiler(serializerCompiler)

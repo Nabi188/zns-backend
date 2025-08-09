@@ -9,6 +9,9 @@ const envSchema = z.object({
   JWT_MAX_AGE: z.coerce.number(),
   FRONTEND_DOMAIN: z.string(),
   FRONTEND_URL: z.string(),
+  SMTP_HOST: z.string(),
+  SMTP_USER: z.string(),
+  SMTP_PASS: z.string(),
   NODE_ENV: z.string()
 })
 
@@ -20,6 +23,9 @@ const env = {
   JWT_MAX_AGE: process.env.JWT_MAX_AGE,
   FRONTEND_DOMAIN: process.env.FRONTEND_DOMAIN,
   FRONTEND_URL: process.env.FRONTEND_URL,
+  SMTP_HOST: process.env.SMTP_HOST,
+  SMTP_USER: process.env.SMTP_USER,
+  SMTP_PASS: process.env.SMTP_PASS,
   NODE_ENV: process.env.NODE_ENV
 }
 

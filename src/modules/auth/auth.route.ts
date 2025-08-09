@@ -7,7 +7,9 @@ import {
   logoutHandler,
   meHandler,
   registerUserHandler,
-  selectTenantHandler
+  selectTenantHandler,
+  sendOTPHandler,
+  verifyOTPHandler
 } from './auth.controller'
 import {
   createUserSchema,
@@ -20,6 +22,12 @@ import {
   logoutResponseSchema
 } from './auth.schema'
 import { errorResponseSchema } from '@/schemas/error.schema'
+import {
+  sendOtpResponseSchema,
+  sendOtpSchema,
+  verifyOtpResponseSchema,
+  verifyOtpSchema
+} from './verification.schema'
 
 async function authRoutes(server: FastifyInstance) {
   const router = server.withTypeProvider<ZodTypeProvider>()
@@ -95,6 +103,38 @@ async function authRoutes(server: FastifyInstance) {
       }
     },
     logoutHandler
+  )
+
+  router.post(
+    '/otp/send',
+    {
+      preHandler: [server.authenticate],
+      schema: {
+        response: {
+          200: sendOtpResponseSchema,
+          401: errorResponseSchema,
+          500: errorResponseSchema
+        }
+      }
+    },
+    sendOTPHandler
+  )
+
+  router.post(
+    '/otp/verify',
+    {
+      preHandler: [server.authenticate],
+      schema: {
+        body: verifyOtpSchema,
+        response: {
+          200: verifyOtpResponseSchema,
+          400: errorResponseSchema,
+          401: errorResponseSchema,
+          500: errorResponseSchema
+        }
+      }
+    },
+    verifyOTPHandler
   )
 }
 
