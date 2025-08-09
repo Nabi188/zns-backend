@@ -35,6 +35,16 @@ export const tenantDetailsSchema = tenantSchema.extend({
 
 export const tenantsSchema = z.array(tenantDetailsSchema)
 
+export const currentTenantSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  role: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date()
+})
+
+export type CurrentTenant = z.infer<typeof currentTenantSchema>
+
 export type Tenant = z.infer<typeof tenantSchema>
 export type CreateTenantInput = z.infer<typeof createTenantSchema>
 export type CreateTenantResponse = z.infer<typeof createTenantResponseSchema>

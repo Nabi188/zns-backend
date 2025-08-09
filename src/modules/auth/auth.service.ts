@@ -26,6 +26,7 @@ export async function findUserByEmail(email: string) {
       id: true,
       email: true,
       fullName: true,
+      avatarUrl: true,
       password: true,
       phone: true,
       createdAt: true,
@@ -76,6 +77,7 @@ export async function findUserById(userId: string) {
       id: true,
       email: true,
       fullName: true,
+      avatarUrl: true,
       createdAt: true,
       updatedAt: true,
       tenants: {

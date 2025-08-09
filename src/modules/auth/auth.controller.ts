@@ -11,8 +11,8 @@ import { CreateUserInput, LoginInput, SelectTenantInput } from './auth.schema'
 import { Prisma } from '@/lib/generated/prisma'
 import { verifyPassword } from '@/utils/hash'
 import { server } from '@/app'
-import { envConfig } from '@/lib/envConfig'
 import { clearAuthCookie, setAuthCookie } from '@/lib/authCookie'
+import { getTenantsById } from '../tenants/tenant.service'
 
 export async function registerUserHandler(
   request: FastifyRequest<{ Body: CreateUserInput }>,
@@ -42,48 +42,6 @@ export async function registerUserHandler(
   }
 }
 
-// export async function loginHandler(
-//   request: FastifyRequest<{ Body: LoginInput }>,
-//   reply: FastifyReply
-// ) {
-//   const body = request.body
-//   try {
-//     const user = await findUserByEmail(body.email)
-//     if (!user) {
-//       return reply.code(401).send({
-//         message: 'Invalid Email or Password!'
-//       })
-//     }
-//     const correctPassword = await verifyPassword(body.password, user.password)
-//     if (!correctPassword) {
-//       return reply.code(401).send({
-//         message: 'Invalid Email or Password!'
-//       })
-//     }
-
-//     // Generate JWT token
-//     const tokenPayload = {
-//       id: user.id,
-//       email: user.email,
-//       fullName: user.fullName,
-//       tenants: user.tenants.map((t) => ({
-//         tenantId: t.tenant.id,
-//         role: t.role
-//       }))
-//     }
-//     const token = await server.jwt.sign(tokenPayload)
-
-//     return reply.send({ access_token: token })
-//   } catch (e) {
-//     console.error(e)
-
-//     return reply.code(500).send({
-//       error: 'Internal server error',
-//       message: 'Login failed'
-//     })
-//   }
-// }
-
 // > Chuyển sang dùng Cookie để xử lý cho gọn
 export async function loginHandler(
   request: FastifyRequest<{ Body: LoginInput }>,
@@ -92,20 +50,6 @@ export async function loginHandler(
   const body = request.body
   try {
     const user = await findUserByEmail(body.email)
-    // if (!user) {
-    //   return reply.code(401).send({
-    //     error: 'Unauthorized',
-    //     message: 'Invalid Email or Password!'
-    //   })
-    // }
-
-    // const correctPassword = await verifyPassword(body.password, user.password)
-    // if (!correctPassword) {
-    //   return reply.code(401).send({
-    //     error: 'Unauthorized',
-    //     message: 'Invalid Email or Password!'
-    //   })
-    // }
 
     // gom logic check user và password
     if (!user || !(await verifyPassword(body.password, user.password))) {
@@ -123,30 +67,23 @@ export async function loginHandler(
 
     const token = await server.jwt.sign(tokenPayload)
 
-    // reply.setCookie('token', token, {
-    //   httpOnly: true,
-    //   secure: true,
-    //   sameSite: 'none',
-    //   path: '/',
-    //   domain:
-    //     envConfig.NODE_ENV === 'production'
-    //       ? envConfig.FRONTEND_DOMAIN
-    //       : undefined,
-    //   maxAge: envConfig.JWT_MAX_AGE
-    // })
-
     setAuthCookie(reply, token)
 
     return reply.send({
       user: {
         id: user.id,
         email: user.email,
-        fullName: user.fullName
+        fullName: user.fullName,
+        avatarUrl: user.avatarUrl,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
       },
       tenants: user.tenants.map((t) => ({
         tenantId: t.tenant.id,
         name: t.tenant.name,
-        role: t.role
+        role: t.role,
+        createdAt: t.tenant.createdAt,
+        updatedAt: t.tenant.updatedAt
       }))
     })
   } catch (e) {
@@ -177,18 +114,6 @@ export async function selectTenantHandler(
       tenantId,
       role: tenant.role
     })
-
-    // reply.setCookie('token', token, {
-    //   httpOnly: true,
-    //   secure: true,
-    //   sameSite: 'none',
-    //   path: '/',
-    //   domain:
-    //     envConfig.NODE_ENV === 'production'
-    //       ? envConfig.FRONTEND_DOMAIN
-    //       : undefined,
-    //   maxAge: envConfig.JWT_MAX_AGE
-    // })
 
     setAuthCookie(reply, token)
 
@@ -239,8 +164,13 @@ export async function meHandler(request: FastifyRequest, reply: FastifyReply) {
       })
     }
 
+    const currentTenant = user.tenantId
+      ? await getTenantsById(user.tenantId, user.id)
+      : null
+
     return reply.send({
       ...fullUser,
+      currentTenant,
       tenants: fullUser.tenants.map((t) => ({
         id: t.tenant.id,
         name: t.tenant.name,

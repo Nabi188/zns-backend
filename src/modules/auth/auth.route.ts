@@ -54,7 +54,6 @@ async function authRoutes(server: FastifyInstance) {
     loginHandler
   )
 
-  //TODO: Chưa làm me handler
   router.get(
     '/me',
     {

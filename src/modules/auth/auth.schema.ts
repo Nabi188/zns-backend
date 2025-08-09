@@ -1,6 +1,7 @@
 // auth.schema.ts => Định nghĩa schema
 import { z } from 'zod'
 import { userSchema } from '../users'
+import { currentTenantSchema } from '../tenants/tenant.schema'
 
 export const createUserSchema = userSchema.extend({
   password: z.string().min(6, 'Password needs at least 6 characters')
@@ -21,13 +22,18 @@ export const loginResponseSchema = z.object({
   user: z.object({
     id: z.string(),
     email: z.string(),
-    fullName: z.string()
+    fullName: z.string(),
+    avatarUrl: z.string().optional(),
+    createdAt: z.date(),
+    updatedAt: z.date()
   }),
   tenants: z.array(
     z.object({
       tenantId: z.string(),
       name: z.string(),
-      role: z.string()
+      role: z.string(),
+      createdAt: z.date(),
+      updatedAt: z.date()
     })
   )
 })
@@ -35,12 +41,14 @@ export const loginResponseSchema = z.object({
 const meTenantSchema = z.object({
   id: z.string(),
   name: z.string(),
+  avatarUrl: z.string().optional(),
   role: z.string(),
   createdAt: z.date(),
   updatedAt: z.date()
 })
 
 export const meResponseSchema = createUserResponseSchema.extend({
+  currentTenant: currentTenantSchema,
   tenants: z.array(meTenantSchema)
 })
 

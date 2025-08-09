@@ -28,17 +28,23 @@ async function main() {
     {
       fullName: 'Alice',
       email: 'alice@example.com',
-      password: 'password123'
+      password: 'password123',
+      avatarUrl:
+        'https://res.cloudinary.com/djlfx1adk/image/upload/v1704342262/rijmlovslazlhm9nu9jm.jpg'
     },
     {
       fullName: 'Bob',
       email: 'bob@example.com',
-      password: 'password123'
+      password: 'password123',
+      avatarUrl:
+        'https://res.cloudinary.com/djlfx1adk/image/upload/v1704342262/rijmlovslazlhm9nu9jm.jpg'
     },
     {
       fullName: 'Bin',
       email: 'hello@digii.vn',
-      password: 'hello'
+      password: 'hello',
+      avatarUrl:
+        'https://res.cloudinary.com/djlfx1adk/image/upload/v1704342262/rijmlovslazlhm9nu9jm.jpg'
     }
   ]
 
@@ -95,10 +101,13 @@ async function main() {
       data: {
         fullName: user.fullName,
         email: user.email,
-        password: hashedPassword
+        password: hashedPassword,
+        avatarUrl: user.avatarUrl
       }
     })
-    userLogs.push(`${user.fullName} (${user.email})`)
+    userLogs.push(
+      `${user.fullName} (${user.email}) - avatar: ${user.avatarUrl}`
+    )
   }
 
   // Ghi log plans & users

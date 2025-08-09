@@ -51,3 +51,29 @@ export async function getTenantsByMember(userId: string) {
 
   return tenants
 }
+
+export async function getTenantsById(tenantId: string, userId: string) {
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: tenantId },
+    select: {
+      id: true,
+      name: true,
+      members: {
+        where: { userId },
+        select: { role: true }
+      },
+      createdAt: true,
+      updatedAt: true
+    }
+  })
+
+  if (!tenant) return null
+
+  return {
+    id: tenant.id,
+    name: tenant.name,
+    role: tenant.members[0]?.role ?? null,
+    createdAt: tenant.createdAt,
+    updatedAt: tenant.updatedAt
+  }
+}
