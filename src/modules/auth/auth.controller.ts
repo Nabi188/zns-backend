@@ -7,8 +7,12 @@ import {
   findUserById,
   findUserTenant
 } from './auth.service'
-import { CreateUserInput, LoginInput, SelectTenantInput } from './auth.schema'
-import { Prisma } from '@/lib/generated/prisma'
+import {
+  CreateUserInput,
+  createUserResponseSchema,
+  LoginInput,
+  SelectTenantInput
+} from './auth.schema'
 import { verifyPassword } from '@/utils/hash'
 import { server } from '@/app'
 import { clearAuthCookie, setAuthCookie } from '@/lib/authCookie'
@@ -32,7 +36,11 @@ export async function registerUserHandler(
     }
 
     const user = await createUser(body)
-    return reply.code(201).send(user)
+
+    const { password, ...createdUser } = user
+    // console.log(createdUser)
+
+    return reply.code(201).send(createdUser)
   } catch (e) {
     console.error(e)
     return reply.code(500).send({

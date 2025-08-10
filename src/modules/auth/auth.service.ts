@@ -11,7 +11,8 @@ export async function createUser(input: CreateUserInput) {
     data: {
       ...rest,
       phone: input.phone || '',
-      password: hashedPassword
+      password: hashedPassword,
+      isVerified: false
     }
   })
   return user

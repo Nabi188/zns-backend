@@ -1,7 +1,16 @@
 // auth.schema.ts => Định nghĩa schema
 import { z } from 'zod'
-import { userSchema } from '../users'
 import { currentTenantSchema } from '../tenants/tenant.schema'
+
+const phoneRegex =
+  /^(?:\+84|0)(3[2-9]|5[6|8|9]|7[0|6-9]|8[1-5]|9[0-9])[0-9]{7}$/
+
+export const userSchema = z.object({
+  fullName: z.string().min(3, 'Full name required at least 3 characters'),
+  email: z.email('Invalid email format'),
+  phone: z.string().regex(phoneRegex, 'Invalid phone number'),
+  avatarUrl: z.string().nullable().optional()
+})
 
 export const createUserSchema = userSchema.extend({
   password: z.string().min(6, 'Password needs at least 6 characters')
@@ -9,6 +18,7 @@ export const createUserSchema = userSchema.extend({
 
 export const createUserResponseSchema = userSchema.extend({
   id: z.string(),
+  isVerified: z.boolean(),
   createdAt: z.date(),
   updatedAt: z.date()
 })
