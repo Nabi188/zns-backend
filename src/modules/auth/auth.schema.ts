@@ -8,7 +8,7 @@ const phoneRegex =
 export const userSchema = z.object({
   fullName: z.string().min(3, 'Full name required at least 3 characters'),
   email: z.email('Invalid email format'),
-  phone: z.string().regex(phoneRegex, 'Invalid phone number'),
+  phone: z.string().regex(phoneRegex, 'Invalid phone number').nullable(),
   avatarUrl: z.string().nullable().optional()
 })
 
@@ -52,7 +52,6 @@ export const loginResponseSchema = z.object({
 const meTenantSchema = z.object({
   id: z.string(),
   name: z.string(),
-  avatarUrl: z.string().optional(),
   role: z.string(),
   createdAt: z.date(),
   updatedAt: z.date()

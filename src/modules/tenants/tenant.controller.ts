@@ -4,7 +4,7 @@ import { createTenant } from './tenant.service'
 import { CreateTenantBody, CreateTenantInput } from './tenant.schema'
 
 export async function createTenantHandler(
-  request: FastifyRequest, // <- no generics, tránh mismatch
+  request: FastifyRequest,
   reply: FastifyReply
 ) {
   const ownerId = request.user.id

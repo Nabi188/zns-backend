@@ -131,6 +131,15 @@ export async function sendOTPHandler(
   request: FastifyRequest,
   reply: FastifyReply
 ) {
+  const isVerified = request.user.isVerified
+
+  if (isVerified) {
+    return reply.code(200).send({
+      error: 400,
+      message: 'Email already verified.'
+    })
+  }
+
   const { id, email } = request.user
 
   const result = await sendVerificationOTP(request.server, id, email)
@@ -148,6 +157,14 @@ export async function verifyOTPHandler(
   request: FastifyRequest,
   reply: FastifyReply
 ) {
+  const isVerified = request.user.isVerified
+
+  if (isVerified) {
+    return reply.code(200).send({
+      error: 400,
+      message: 'Email already verified.'
+    })
+  }
   const { otp } = request.body as VerifyOtpInput
 
   const ok = await verifyOTP(request.server, request.user.id, otp)
@@ -247,7 +264,18 @@ export async function meHandler(request: FastifyRequest, reply: FastifyReply) {
       ? await getTenantsById(user.tenantId, user.id)
       : null
 
-    return reply.send({
+    // return reply.send({
+    //   ...fullUser,
+    //   currentTenant,
+    //   tenants: fullUser.tenants.map((t) => ({
+    //     id: t.tenant.id,
+    //     name: t.tenant.name,
+    //     role: t.role,
+    //     createdAt: t.tenant.createdAt,
+    //     updatedAt: t.tenant.updatedAt
+    //   }))
+    // })
+    const response = {
       ...fullUser,
       currentTenant,
       tenants: fullUser.tenants.map((t) => ({
@@ -257,7 +285,11 @@ export async function meHandler(request: FastifyRequest, reply: FastifyReply) {
         createdAt: t.tenant.createdAt,
         updatedAt: t.tenant.updatedAt
       }))
-    })
+    }
+
+    console.log('meHandler response:', JSON.stringify(response, null, 2))
+
+    return reply.send(response)
   } catch (e) {
     console.error(e)
     return reply.code(500).send({

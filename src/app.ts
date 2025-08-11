@@ -47,7 +47,7 @@ server.register(fastifyCookie)
 server.register(jwt, {
   secret: envConfig.JWT_SECRET,
   cookie: {
-    cookieName: 'token',
+    cookieName: 'access_token',
     signed: false
   }
 })

@@ -81,6 +81,7 @@ export async function findUserById(userId: string) {
     select: {
       id: true,
       email: true,
+      phone: true,
       fullName: true,
       avatarUrl: true,
       isVerified: true,
