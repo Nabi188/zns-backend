@@ -92,7 +92,7 @@ async function authRoutes(server: FastifyInstance) {
     selectTenantHandler
   )
 
-  server.get(
+  server.post(
     '/logout',
     {
       schema: {
@@ -105,7 +105,7 @@ async function authRoutes(server: FastifyInstance) {
     logoutHandler
   )
 
-  server.get(
+  server.post(
     '/logout/all',
     {
       schema: {

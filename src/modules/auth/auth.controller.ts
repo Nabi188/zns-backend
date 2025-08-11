@@ -8,7 +8,8 @@ import {
   findUserTenant,
   createSession,
   deleteSession,
-  deleteAllSessions
+  deleteAllSessions,
+  createTokens
 } from './auth.service'
 import { CreateUserInput, LoginInput, SelectTenantInput } from './auth.schema'
 import { verifyPassword } from '@/utils/hash'
@@ -84,13 +85,10 @@ export async function loginHandler(
       isVerified: user.isVerified
     }
 
-    // tạo cặp token
-    const accessToken = await request.server.jwt.sign(payload, {
-      expiresIn: `${envConfig.ACCESS_TOKEN_MAX_AGE}s`
-    })
-    const refreshToken = await request.server.jwt.sign(payload, {
-      expiresIn: `${envConfig.REFRESH_TOKEN_MAX_AGE}s`
-    })
+    const { accessToken, refreshToken } = await createTokens(
+      request.server,
+      payload
+    )
 
     const sessionId = await createSession(request.server, user.id)
 

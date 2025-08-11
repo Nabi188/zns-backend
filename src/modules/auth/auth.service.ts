@@ -6,6 +6,7 @@ import { hashPassword } from '@/utils/hash'
 import { FastifyInstance } from 'fastify'
 import { envConfig } from '@/lib/envConfig'
 import { randomUUID } from 'crypto'
+import { FastifyJWT } from '@fastify/jwt'
 
 export async function createUser(input: CreateUserInput) {
   const { password, ...rest } = input
@@ -102,6 +103,22 @@ export async function findUserById(userId: string) {
       }
     }
   })
+}
+
+type JwtPayload = FastifyJWT['payload']
+
+export async function createTokens(
+  server: FastifyInstance,
+  payload: JwtPayload
+): Promise<{ accessToken: string; refreshToken: string }> {
+  const accessToken = await server.jwt.sign(payload, {
+    expiresIn: `${envConfig.ACCESS_TOKEN_MAX_AGE}s`
+  })
+  const refreshToken = await server.jwt.sign(payload, {
+    expiresIn: `${envConfig.REFRESH_TOKEN_MAX_AGE}s`
+  })
+
+  return { accessToken, refreshToken }
 }
 
 export async function createSession(
