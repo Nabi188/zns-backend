@@ -32,6 +32,9 @@ importers:
       bcryptjs:
         specifier: ^3.0.2
         version: 3.0.2
+      chalk:
+        specifier: ^5.5.0
+        version: 5.5.0
       dotenv:
         specifier: ^17.2.1
         version: 17.2.1
@@ -314,6 +317,10 @@ packages:
     peerDependenciesMeta:
       magicast:
         optional: true
+
+  chalk@5.5.0:
+    resolution: {integrity: sha512-1tm8DTaJhPBG3bIkVeZt1iZM9GfSX2lzOeDVZH9R9ffRHpmHvxZ/QhgQH/aDTkswQVt+YHdXAdS/In/30OjCbg==}
+    engines: {node: ^12.17.0 || ^14.13 || >=16.0.0}
 
   chokidar@3.6.0:
     resolution: {integrity: sha512-7VT13fmjotKpGipCW9JEQAusEPE+Ei8nl6/g4FBAmIm0GOOLMua9NDDo/DWp0ZAxCr3cPq5ZpBqmPAQgDda2Pw==}
@@ -1335,6 +1342,8 @@ snapshots:
       perfect-debounce: 1.0.0
       pkg-types: 2.2.0
       rc9: 2.1.2
+
+  chalk@5.5.0: {}
 
   chokidar@3.6.0:
     dependencies:

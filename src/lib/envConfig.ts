@@ -1,5 +1,6 @@
 import 'dotenv/config'
 import { z } from 'zod'
+import chalk from 'chalk'
 
 const envSchema = z.object({
   PORT: z.coerce.number(),
@@ -36,13 +37,16 @@ const env = {
 const parsedEnv = envSchema.safeParse(env)
 
 if (!parsedEnv.success) {
-  const envError = parsedEnv.success === false ? parsedEnv.error.issues : []
+  const envError = parsedEnv.error.issues
 
-  const errorMessages = [...envError]
-    .map((i) => `${i.path.join('.')}:${i.message}`)
-    .join(', ')
+  const errorMessages = envError
+    .map(
+      (i) =>
+        `${chalk.yellow.bold(i.path.join('.'))}: ${chalk.redBright(i.message)}`
+    )
+    .join('\n ')
 
-  throw new Error('ENV validation failed: ' + errorMessages)
+  throw new Error(chalk.bgRed.bold('ENV validation failed:\n') + errorMessages)
 }
 
 export const envConfig = parsedEnv.data

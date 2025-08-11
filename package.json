@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "tsnd --respawn --transpile-only --require tsconfig-paths/register --exit-child src/app.ts",
+    "dev": "tsnd --respawn --transpile-only --require tsconfig-paths/register --exit-child --watch .env src/app.ts",
     "build": "tsc",
     "start": "node dist/app.js",
     "prettier": "prettier --check .",
@@ -24,6 +24,7 @@
     "@prisma/client": "^6.13.0",
     "ajv": "^8.17.1",
     "bcryptjs": "^3.0.2",
+    "chalk": "^5.5.0",
     "dotenv": "^17.2.1",
     "fastify": "^5.4.0",
     "fastify-plugin": "^5.0.1",
