@@ -6,6 +6,7 @@ import { CreateUserInput } from '@/modules/auth'
 import { generateApiKey } from '@/utils/hash'
 import fs from 'fs/promises'
 import path from 'path'
+import { boolean } from 'zod'
 
 let log = '# Seed result\n\n'
 
@@ -24,10 +25,11 @@ async function main() {
 
   log += '🚀 Bắt đầu seeding...\n\n'
 
-  const users: CreateUserInput[] = [
+  const users: (CreateUserInput & { isVerified: boolean })[] = [
     {
       fullName: 'Alice',
       email: 'alice@example.com',
+      phone: '0977889999',
       password: 'password123',
       avatarUrl:
         'https://res.cloudinary.com/djlfx1adk/image/upload/v1704342262/rijmlovslazlhm9nu9jm.jpg',
@@ -36,6 +38,7 @@ async function main() {
     {
       fullName: 'Bob',
       email: 'bob@example.com',
+      phone: '0977881111',
       password: 'password123',
       avatarUrl:
         'https://res.cloudinary.com/djlfx1adk/image/upload/v1704342262/rijmlovslazlhm9nu9jm.jpg',
@@ -44,6 +47,7 @@ async function main() {
     {
       fullName: 'Bin',
       email: 'hello@digii.vn',
+      phone: '0962651808',
       password: 'hello',
       avatarUrl:
         'https://res.cloudinary.com/djlfx1adk/image/upload/v1704342262/rijmlovslazlhm9nu9jm.jpg',

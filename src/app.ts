@@ -17,6 +17,7 @@ import {
 import { envConfig } from './lib/envConfig'
 import { healthcheckRoutes } from './modules/healthcheck'
 import nodemailerPlugin from './plugins/nodemailer'
+import { tenantRoutes } from './modules/tenants/tenant.route'
 
 export const server = fastify({
   logger: {
@@ -25,6 +26,12 @@ export const server = fastify({
       options: {
         colorize: true
       }
+    }
+  },
+  ajv: {
+    customOptions: {
+      allErrors: true,
+      verbose: true
     }
   }
 }).withTypeProvider<ZodTypeProvider>()
@@ -75,6 +82,7 @@ async function registerRoutes() {
   await server.register(planRoutes, { prefix: '/api/plans' })
   await server.register(authRoutes, { prefix: '/api/auth' })
   await server.register(apiKeyRoutes, { prefix: '/api/api-keys' })
+  await server.register(tenantRoutes, { prefix: '/api/tenants' })
   await server.register(healthcheckRoutes, { prefix: '/api/healthcheck' })
 }
 

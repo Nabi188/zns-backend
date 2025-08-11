@@ -1,10 +1,10 @@
 import { prisma } from '@/lib/prisma'
-import { CreateTenantInput } from './tenant.schema'
+import { CreateTenantInput, UpdateTenantInput } from './tenant.schema'
 import { Role } from '@/lib/generated/prisma'
 
 export async function createTenant(input: CreateTenantInput) {
   const { name, ownerId } = input
-  // Không cần thêm balance = 0 vì trong database có default rồi
+
   const tenant = await prisma.tenant.create({
     data: {
       name,
@@ -23,6 +23,26 @@ export async function createTenant(input: CreateTenantInput) {
         }
       }
     }
+  })
+
+  return {
+    ...tenant,
+    members: tenant.members.map((m) => ({
+      userId: m.userId,
+      fullName: m.user.fullName,
+      email: m.user.email,
+      role: m.role,
+      joinedAt: m.joinedAt
+    }))
+  }
+}
+
+export async function updateTenant(input: UpdateTenantInput) {
+  const { id, name } = input
+
+  const tenant = prisma.tenant.update({
+    where: { id },
+    data: { name }
   })
 
   return tenant

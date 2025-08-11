@@ -20,6 +20,14 @@ export const createTenantSchema = z.object({
   name: z.string(),
   ownerId: z.string()
 })
+export const createTenantBodySchema = z.object({
+  name: z.string()
+})
+
+export const updateTenantSchema = z.object({
+  id: z.string(),
+  name: z.string()
+})
 
 export const createTenantResponseSchema = tenantSchema.extend({
   id: z.string(),
@@ -48,3 +56,5 @@ export type CurrentTenant = z.infer<typeof currentTenantSchema>
 export type Tenant = z.infer<typeof tenantSchema>
 export type CreateTenantInput = z.infer<typeof createTenantSchema>
 export type CreateTenantResponse = z.infer<typeof createTenantResponseSchema>
+export type UpdateTenantInput = z.infer<typeof updateTenantSchema>
+export type CreateTenantBody = z.infer<typeof createTenantBodySchema>
