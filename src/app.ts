@@ -58,17 +58,40 @@ server.register(cors, {
   credentials: true
 })
 
+// server.decorate(
+//   'authenticate',
+//   async (request: FastifyRequest, reply: FastifyReply) => {
+//     try {
+//       // Verify JWT từ cookie thay vì header
+//       await request.jwtVerify()
+//     } catch (e) {
+//       return reply.code(401).send({
+//         statusCode: 401,
+//         error: 'Unauthorized',
+//         message: 'Invalid or missing token'
+//       })
+//     }
+//   }
+// )
+
+// Đổi qua dùng access_token
 server.decorate(
   'authenticate',
   async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      // Verify JWT từ cookie thay vì header
-      await request.jwtVerify()
+      const token = request.cookies.access_token
+      if (!token) {
+        return reply.code(401).send({
+          error: 'Unauthorized',
+          message: 'Missing access token'
+        })
+      }
+
+      request.user = await server.jwt.verify(token)
     } catch (e) {
       return reply.code(401).send({
-        statusCode: 401,
         error: 'Unauthorized',
-        message: 'Invalid or missing token'
+        message: 'Invalid or expired token'
       })
     }
   }

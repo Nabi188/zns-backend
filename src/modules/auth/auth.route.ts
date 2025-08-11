@@ -4,6 +4,7 @@ import { FastifyInstance } from 'fastify'
 import { ZodTypeProvider } from 'fastify-type-provider-zod'
 import {
   loginHandler,
+  logoutAllHandler,
   logoutHandler,
   meHandler,
   registerUserHandler,
@@ -24,7 +25,6 @@ import {
 import { errorResponseSchema } from '@/schemas/error.schema'
 import {
   sendOtpResponseSchema,
-  sendOtpSchema,
   verifyOtpResponseSchema,
   verifyOtpSchema
 } from './verification.schema'
@@ -103,6 +103,19 @@ async function authRoutes(server: FastifyInstance) {
       }
     },
     logoutHandler
+  )
+
+  server.get(
+    '/logout/all',
+    {
+      schema: {
+        response: {
+          200: logoutResponseSchema,
+          500: errorResponseSchema
+        }
+      }
+    },
+    logoutAllHandler
   )
 
   router.post(

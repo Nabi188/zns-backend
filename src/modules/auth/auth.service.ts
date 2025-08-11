@@ -3,6 +3,9 @@
 import { prisma } from '@/lib/prisma'
 import { CreateUserInput } from './auth.schema'
 import { hashPassword } from '@/utils/hash'
+import { FastifyInstance } from 'fastify'
+import { envConfig } from '@/lib/envConfig'
+import { randomUUID } from 'crypto'
 
 export async function createUser(input: CreateUserInput) {
   const { password, ...rest } = input
@@ -98,4 +101,83 @@ export async function findUserById(userId: string) {
       }
     }
   })
+}
+
+export async function createSession(
+  server: FastifyInstance,
+  userId: string
+): Promise<string> {
+  const sessionId = randomUUID()
+
+  await server.redis.set(
+    `session:${sessionId}`,
+    JSON.stringify({ userId }),
+    'EX',
+    envConfig.SESSION_MAX_AGE
+  )
+
+  return sessionId
+}
+
+export async function getSession(server: FastifyInstance, sessionId: string) {
+  const sessionData = await server.redis.get(`session:${sessionId}`)
+  return sessionData ? JSON.parse(sessionData) : null
+}
+
+export async function deleteSession(
+  server: FastifyInstance,
+  sessionId: string
+): Promise<boolean> {
+  const result = await server.redis.del(`session:${sessionId}`)
+  return result > 0
+}
+
+export async function deleteAllSessions(
+  server: FastifyInstance,
+  userId: string
+): Promise<number> {
+  const keys = await server.redis.keys('session:*')
+
+  if (keys.length === 0) return 0
+
+  const sessions = await server.redis.mget(keys)
+
+  const userSessionKeys: string[] = []
+  sessions.forEach((sessionData, index) => {
+    if (sessionData) {
+      try {
+        const parsed = JSON.parse(sessionData)
+        if (parsed.userId === userId) {
+          userSessionKeys.push(keys[index])
+        }
+      } catch (e) {
+        console.log(e)
+      }
+    }
+  })
+
+  if (userSessionKeys.length > 0) {
+    return await server.redis.del(...userSessionKeys)
+  }
+
+  return 0
+}
+
+export async function isSessionValid(
+  server: FastifyInstance,
+  sessionId: string
+): Promise<boolean> {
+  const exists = await server.redis.exists(`session:${sessionId}`)
+  return exists === 1
+}
+
+export async function refreshSession(
+  server: FastifyInstance,
+  sessionId: string
+): Promise<boolean> {
+  const result = await server.redis.expire(
+    `session:${sessionId}`,
+    envConfig.SESSION_MAX_AGE
+  )
+  return result === 1
 }

@@ -5,20 +5,29 @@ import {
   createUser,
   findUserByEmail,
   findUserById,
-  findUserTenant
+  findUserTenant,
+  createSession,
+  deleteSession,
+  deleteAllSessions
 } from './auth.service'
-import {
-  CreateUserInput,
-  createUserResponseSchema,
-  LoginInput,
-  SelectTenantInput
-} from './auth.schema'
+import { CreateUserInput, LoginInput, SelectTenantInput } from './auth.schema'
 import { verifyPassword } from '@/utils/hash'
 import { server } from '@/app'
-import { clearAuthCookie, setAuthCookie } from '@/lib/authCookie'
+import {
+  clearAccessToken,
+  clearRefreshToken,
+  clearSessionId
+} from '@/lib/authCookies'
+import {
+  setAccessToken,
+  setRefreshToken,
+  setSessionId
+} from '@/lib/authCookies'
 import { getTenantsById } from '../tenants/tenant.service'
 import { sendVerificationOTP, verifyOTP } from './verification.service'
-import { SendOtpInput, VerifyOtpInput } from './verification.schema'
+import { VerifyOtpInput } from './verification.schema'
+import { envConfig } from '@/lib/envConfig'
+import { randomUUID } from 'crypto'
 
 export async function registerUserHandler(
   request: FastifyRequest<{ Body: CreateUserInput }>,
@@ -55,29 +64,42 @@ export async function loginHandler(
   request: FastifyRequest<{ Body: LoginInput }>,
   reply: FastifyReply
 ) {
-  const body = request.body
-  try {
-    const user = await findUserByEmail(body.email)
+  const { email, password } = request.body
 
-    // gom logic check user và password
-    if (!user || !(await verifyPassword(body.password, user.password))) {
+  try {
+    const user = await findUserByEmail(email)
+
+    // Check email và password
+    if (!user || !(await verifyPassword(password, user.password))) {
       return reply.code(401).send({
         error: 'Unauthorized',
         message: 'Invalid Email or Password!'
       })
     }
 
-    // JWT lúc đầu chỉ chứa userId và email thôi > Chọn tenant cập nhật lại JWT mới
-    const tokenPayload = {
+    // Tạo payload
+    const payload = {
       id: user.id,
       email: user.email,
       isVerified: user.isVerified
     }
 
-    const token = await server.jwt.sign(tokenPayload)
+    // tạo cặp token
+    const accessToken = await request.server.jwt.sign(payload, {
+      expiresIn: `${envConfig.ACCESS_TOKEN_MAX_AGE}s`
+    })
+    const refreshToken = await request.server.jwt.sign(payload, {
+      expiresIn: `${envConfig.REFRESH_TOKEN_MAX_AGE}s`
+    })
 
-    setAuthCookie(reply, token)
+    const sessionId = await createSession(request.server, user.id)
 
+    // Set cookies
+    setAccessToken(reply, accessToken)
+    setRefreshToken(reply, refreshToken)
+    setSessionId(reply, sessionId)
+
+    // Trả về user info
     return reply.send({
       user: {
         id: user.id,
@@ -136,12 +158,12 @@ export async function verifyOTPHandler(
       .send({ error: 'Invalid OTP', message: 'Invalid or expired OTP' })
   }
 
-  // tạo JWT mới với isVerified = true
-  const newToken = await request.server.jwt.sign({
+  // Tạo access token mới có isVerified = true
+  const accessToken = await request.server.jwt.sign({
     ...request.user,
     isVerified: true
   })
-  setAuthCookie(reply, newToken)
+  setAccessToken(reply, accessToken)
 
   return reply.code(200).send({ message: 'Email verified successfully' })
 }
@@ -159,7 +181,7 @@ export async function selectTenantHandler(
       return reply.code(403).send({ message: 'Access denied' })
     }
 
-    const token = await request.server.jwt.sign({
+    const accessToken = await request.server.jwt.sign({
       id: user.id,
       email: user.email,
       isVerified: user.isVerified,
@@ -167,7 +189,7 @@ export async function selectTenantHandler(
       role: tenant.role
     })
 
-    setAuthCookie(reply, token)
+    setAccessToken(reply, accessToken)
 
     return reply.send({
       success: true,
@@ -189,8 +211,6 @@ export async function selectTenantHandler(
     })
   }
 }
-
-// TODO: Làm me handler
 
 export async function meHandler(request: FastifyRequest, reply: FastifyReply) {
   const user = request.user
@@ -248,11 +268,19 @@ export async function meHandler(request: FastifyRequest, reply: FastifyReply) {
 }
 
 export async function logoutHandler(
-  _request: FastifyRequest,
+  request: FastifyRequest,
   reply: FastifyReply
 ) {
   try {
-    clearAuthCookie(reply)
+    const sessionId = request.cookies.session_id
+
+    if (sessionId) {
+      await deleteSession(request.server, sessionId)
+    }
+
+    clearAccessToken(reply)
+    clearRefreshToken(reply)
+    clearSessionId(reply)
 
     return reply.code(200).send({ message: 'Logout successful' })
   } catch (e) {
@@ -260,6 +288,29 @@ export async function logoutHandler(
     return reply.code(500).send({
       error: 'Internal server error',
       message: 'Failed to log out'
+    })
+  }
+}
+
+export async function logoutAllHandler(
+  request: FastifyRequest,
+  reply: FastifyReply
+) {
+  try {
+    const userId = request.user.id
+
+    if (userId) {
+      await deleteAllSessions(request.server, userId)
+    }
+    clearAccessToken(reply)
+    clearRefreshToken(reply)
+    clearSessionId(reply)
+
+    return reply.code(200).send({ message: 'Logout all sessions successful' })
+  } catch (e) {
+    return reply.code(500).send({
+      error: 'Internal server error',
+      message: 'Failed to logout'
     })
   }
 }
