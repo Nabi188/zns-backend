@@ -114,9 +114,8 @@ export async function createTokens(
   const accessToken = await server.jwt.sign(payload, {
     expiresIn: `${envConfig.ACCESS_TOKEN_MAX_AGE}s`
   })
-  const refreshToken = await server.jwt.sign(payload, {
-    expiresIn: `${envConfig.REFRESH_TOKEN_MAX_AGE}s`
-  })
+  //Bỏ session_id đi và dùng luôn refresh_token cho gọn
+  const refreshToken = await createSession(server, payload.id)
 
   return { accessToken, refreshToken }
 }
@@ -198,4 +197,25 @@ export async function refreshSession(
     envConfig.SESSION_MAX_AGE
   )
   return result === 1
+}
+
+export async function refreshAccessToken(
+  server: FastifyInstance,
+  sessionId: string,
+  payload: JwtPayload
+): Promise<string | null> {
+  const session = await getSession(server, sessionId)
+  if (!session) return null
+
+  const user = await findUserById(session.userId)
+  if (!user) return null
+
+  const accessToken = await server.jwt.sign(payload, {
+    expiresIn: `${envConfig.ACCESS_TOKEN_MAX_AGE}s`
+  })
+
+  // Gia hạn session TTL
+  await refreshSession(server, sessionId)
+
+  return accessToken
 }

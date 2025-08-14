@@ -13,22 +13,11 @@ import {
 } from './auth.service'
 import { CreateUserInput, LoginInput, SelectTenantInput } from './auth.schema'
 import { verifyPassword } from '@/utils/hash'
-import { server } from '@/app'
-import {
-  clearAccessToken,
-  clearRefreshToken,
-  clearSessionId
-} from '@/lib/authCookies'
-import {
-  setAccessToken,
-  setRefreshToken,
-  setSessionId
-} from '@/lib/authCookies'
+import { clearAccessToken, clearRefreshToken } from '@/lib/authCookies'
+import { setAccessToken, setRefreshToken } from '@/lib/authCookies'
 import { getTenantsById } from '../tenants/tenant.service'
 import { sendVerificationOTP, verifyOTP } from './verification.service'
 import { VerifyOtpInput } from './verification.schema'
-import { envConfig } from '@/lib/envConfig'
-import { randomUUID } from 'crypto'
 
 export async function registerUserHandler(
   request: FastifyRequest<{ Body: CreateUserInput }>,
@@ -95,10 +84,10 @@ export async function loginHandler(
     // Set cookies
     setAccessToken(reply, accessToken)
     setRefreshToken(reply, refreshToken)
-    setSessionId(reply, sessionId)
+    //Bỏ session_id, giờ refresh_token là session_id luôn
 
     // Trả về user info
-    return reply.send({
+    const res = {
       user: {
         id: user.id,
         email: user.email,
@@ -115,7 +104,10 @@ export async function loginHandler(
         createdAt: t.tenant.createdAt,
         updatedAt: t.tenant.updatedAt
       }))
-    })
+    }
+    console.log(res)
+
+    return reply.send(res)
   } catch (e) {
     console.error(e)
     return reply.code(500).send({
@@ -262,17 +254,6 @@ export async function meHandler(request: FastifyRequest, reply: FastifyReply) {
       ? await getTenantsById(user.tenantId, user.id)
       : null
 
-    // return reply.send({
-    //   ...fullUser,
-    //   currentTenant,
-    //   tenants: fullUser.tenants.map((t) => ({
-    //     id: t.tenant.id,
-    //     name: t.tenant.name,
-    //     role: t.role,
-    //     createdAt: t.tenant.createdAt,
-    //     updatedAt: t.tenant.updatedAt
-    //   }))
-    // })
     const response = {
       ...fullUser,
       currentTenant,
@@ -310,7 +291,6 @@ export async function logoutHandler(
 
     clearAccessToken(reply)
     clearRefreshToken(reply)
-    clearSessionId(reply)
 
     return reply.code(200).send({ message: 'Logout successful' })
   } catch (e) {
@@ -334,7 +314,6 @@ export async function logoutAllHandler(
     }
     clearAccessToken(reply)
     clearRefreshToken(reply)
-    clearSessionId(reply)
 
     return reply.code(200).send({ message: 'Logout all sessions successful' })
   } catch (e) {
