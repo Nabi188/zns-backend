@@ -58,3 +58,4 @@ export type CreateTenantInput = z.infer<typeof createTenantSchema>
 export type CreateTenantResponse = z.infer<typeof createTenantResponseSchema>
 export type UpdateTenantInput = z.infer<typeof updateTenantSchema>
 export type CreateTenantBody = z.infer<typeof createTenantBodySchema>
+export type GetTenantResponse = z.infer<typeof tenantDetailsSchema>

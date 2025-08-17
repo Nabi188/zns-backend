@@ -7,6 +7,7 @@ import { generateApiKey } from '@/utils/hash'
 import fs from 'fs/promises'
 import path from 'path'
 import { boolean } from 'zod'
+import { randomUUID } from 'crypto'
 
 let log = '# Seed result\n\n'
 
@@ -22,6 +23,7 @@ async function main() {
   const planLogs: string[] = []
   const userLogs: string[] = []
   const apiKeyLogs: string[] = []
+  const zaloOaLogs: string[] = []
 
   log += '🚀 Bắt đầu seeding...\n\n'
 
@@ -133,6 +135,7 @@ async function main() {
     data: {
       name: 'Digii Việt Nam',
       ownerId: ownerUser.id,
+      balance: 200000,
       members: {
         create: {
           userId: ownerUser.id,
@@ -161,6 +164,47 @@ async function main() {
   }
 
   addSection(`API Keys đã tạo cho tổ chức ${tenant.name}`, apiKeyLogs)
+
+  // Lấy plan ENTERPRISE
+  const enterprisePlan = await prisma.plan.findUnique({
+    where: { name: 'ENTERPRISE' }
+  })
+  if (!enterprisePlan) throw new Error('❌ Không tìm thấy plan ENTERPRISE')
+
+  // Tạo subscription cho tenant (hạn 365 ngày)
+  const now = new Date()
+  const subscription = await prisma.subscription.create({
+    data: {
+      tenantId: tenant.id,
+      planId: enterprisePlan.id,
+      status: 'active', // nếu enum là ACTIVE thì đổi lại
+      currentPeriodStart: now,
+      currentPeriodEnd: new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000)
+    }
+  })
+  log += `📅 Subscription ENTERPRISE (ID: \`${subscription.id}\`) cho tenant "${tenant.name}"\n\n`
+
+  // Tạo 2 Zalo OA
+  const oaList = [
+    { oaIdZalo: '156766344333112212', oaName: 'Digii Việt Nam OA' },
+    { oaIdZalo: '156766344333112213', oaName: 'Digii Support OA' }
+  ]
+
+  for (const oa of oaList) {
+    await prisma.zaloOa.create({
+      data: {
+        tenantId: tenant.id,
+        oaIdZalo: oa.oaIdZalo,
+        oaName: oa.oaName,
+        accessToken: randomUUID(),
+        refreshToken: randomUUID(),
+        isActive: true
+      }
+    })
+    zaloOaLogs.push(`"${oa.oaName}"`)
+  }
+
+  addSection(`Zalo OA đã tạo cho tenant ${tenant.name}`, zaloOaLogs)
 
   const formatVNDate = (d = new Date()) =>
     new Intl.DateTimeFormat('vi-VN', {

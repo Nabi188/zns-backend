@@ -15,7 +15,7 @@ import { CreateUserInput, LoginInput, SelectTenantInput } from './auth.schema'
 import { verifyPassword } from '@/utils/hash'
 import { clearAccessToken, clearRefreshToken } from '@/lib/authCookies'
 import { setAccessToken, setRefreshToken } from '@/lib/authCookies'
-import { getTenantsById } from '../tenants/tenant.service'
+import { getTenantDetails } from '../tenants/tenant.service'
 import { sendVerificationOTP, verifyOTP } from './verification.service'
 import { VerifyOtpInput } from './verification.schema'
 
@@ -251,8 +251,10 @@ export async function meHandler(request: FastifyRequest, reply: FastifyReply) {
     }
 
     const currentTenant = user.tenantId
-      ? await getTenantsById(user.tenantId, user.id)
+      ? await getTenantDetails(user.id, user.tenantId)
       : null
+
+    // console.log('Current Tenant:', currentTenant)
 
     const response = {
       ...fullUser,
@@ -266,7 +268,7 @@ export async function meHandler(request: FastifyRequest, reply: FastifyReply) {
       }))
     }
 
-    console.log('meHandler response:', JSON.stringify(response, null, 2))
+    // console.log('meHandler response:', JSON.stringify(response, null, 2))
 
     return reply.send(response)
   } catch (e) {

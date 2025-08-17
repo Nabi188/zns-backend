@@ -2,9 +2,10 @@ import { FastifyInstance } from 'fastify'
 import { ZodTypeProvider } from 'fastify-type-provider-zod'
 import {
   createTenantResponseSchema,
-  createTenantBodySchema
+  createTenantBodySchema,
+  tenantDetailsSchema
 } from './tenant.schema'
-import { createTenantHandler } from './tenant.controller'
+import { createTenantHandler, getTenantHandler } from './tenant.controller'
 import { errorResponseSchema } from '@/schemas/error.schema'
 
 async function tenantRoutes(server: FastifyInstance) {
@@ -24,6 +25,20 @@ async function tenantRoutes(server: FastifyInstance) {
       }
     },
     createTenantHandler
+  )
+  router.get(
+    '/details',
+    {
+      preHandler: [server.authenticate]
+      // schema: {
+      //   response: {
+      //     200: tenantDetailsSchema,
+      //     400: errorResponseSchema,
+      //     500: errorResponseSchema
+      //   }
+      // }
+    },
+    getTenantHandler
   )
 }
 
