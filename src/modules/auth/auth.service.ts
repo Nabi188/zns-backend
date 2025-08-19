@@ -1,5 +1,4 @@
-// auth.service.ts => Tương tác với database
-
+// modules/auth/auth.service.ts
 import { prisma } from '@/lib/prisma'
 import { CreateUserInput } from './auth.schema'
 import { hashPassword } from '@/utils/hash'
@@ -7,6 +6,7 @@ import { FastifyInstance } from 'fastify'
 import { envConfig } from '@/lib/envConfig'
 import { randomUUID } from 'crypto'
 import { FastifyJWT } from '@fastify/jwt'
+import { refreshAccessFromRefreshToken } from '@/lib/authTokens' // NEW
 
 export async function createUser(input: CreateUserInput) {
   const { password, ...rest } = input
@@ -24,9 +24,7 @@ export async function createUser(input: CreateUserInput) {
 
 export async function findUserByEmail(email: string) {
   return prisma.user.findUnique({
-    where: {
-      email
-    },
+    where: { email },
     select: {
       id: true,
       email: true,
@@ -44,7 +42,6 @@ export async function findUserByEmail(email: string) {
             select: {
               id: true,
               name: true,
-              // balance: true, //Bỏ đi không cần trả về balance ở đây mà tách sang service của tài chính đúng hơn
               ownerId: true,
               createdAt: true,
               updatedAt: true
@@ -58,27 +55,17 @@ export async function findUserByEmail(email: string) {
 
 export async function findUserTenant(userId: string, tenantId: string) {
   return prisma.tenantMember.findFirst({
-    where: {
-      tenantId,
-      userId
-    },
+    where: { tenantId, userId },
     select: {
       role: true,
-      tenant: {
-        select: {
-          id: true,
-          name: true
-        }
-      }
+      tenant: { select: { id: true, name: true } }
     }
   })
 }
 
 export async function findUserById(userId: string) {
   return prisma.user.findUnique({
-    where: {
-      id: userId
-    },
+    where: { id: userId },
     select: {
       id: true,
       email: true,
@@ -92,12 +79,7 @@ export async function findUserById(userId: string) {
         select: {
           role: true,
           tenant: {
-            select: {
-              id: true,
-              name: true,
-              createdAt: true,
-              updatedAt: true
-            }
+            select: { id: true, name: true, createdAt: true, updatedAt: true }
           }
         }
       }
@@ -114,25 +96,23 @@ export async function createTokens(
   const accessToken = await server.jwt.sign(payload, {
     expiresIn: `${envConfig.ACCESS_TOKEN_MAX_AGE}s`
   })
-  //Bỏ session_id đi và dùng luôn refresh_token cho gọn
+  // refreshToken chính là sessionId
   const refreshToken = await createSession(server, payload.id)
-
   return { accessToken, refreshToken }
 }
 
+// Tách hàm ra cho clear => session ban đầu chỉ có userId => tenantId/role sẽ được thêm sau select-tenant
 export async function createSession(
   server: FastifyInstance,
   userId: string
 ): Promise<string> {
   const sessionId = randomUUID()
-
   await server.redis.set(
     `session:${sessionId}`,
     JSON.stringify({ userId }),
     'EX',
     envConfig.SESSION_MAX_AGE
   )
-
   return sessionId
 }
 
@@ -154,12 +134,11 @@ export async function deleteAllSessions(
   userId: string
 ): Promise<number> {
   const keys = await server.redis.keys('session:*')
-
   if (keys.length === 0) return 0
 
   const sessions = await server.redis.mget(keys)
-
   const userSessionKeys: string[] = []
+
   sessions.forEach((sessionData, index) => {
     if (sessionData) {
       try {
@@ -176,7 +155,6 @@ export async function deleteAllSessions(
   if (userSessionKeys.length > 0) {
     return await server.redis.del(...userSessionKeys)
   }
-
   return 0
 }
 
@@ -199,23 +177,40 @@ export async function refreshSession(
   return result === 1
 }
 
+// Thêm tenantId và role vào session (dùng cho select-tenant / switch-tenant)
+export async function updateSessionTenant(
+  server: FastifyInstance,
+  sessionId: string,
+  tenantId: string,
+  role: string
+) {
+  const key = `session:${sessionId}`
+  const current = await server.redis.get(key)
+  if (!current) return false
+
+  const ttl = await server.redis.ttl(key)
+  const merged = { ...(JSON.parse(current) || {}), tenantId, role }
+  await server.redis.set(
+    key,
+    JSON.stringify(merged),
+    'EX',
+    ttl > 0 ? ttl : envConfig.SESSION_MAX_AGE
+  )
+  return true
+}
+
 export async function refreshAccessToken(
   server: FastifyInstance,
   sessionId: string,
-  payload: JwtPayload
+  _payload?: JwtPayload
 ): Promise<string | null> {
-  const session = await getSession(server, sessionId)
-  if (!session) return null
+  const refreshed = await refreshAccessFromRefreshToken(server, sessionId)
+  return refreshed?.accessToken ?? null
+}
 
-  const user = await findUserById(session.userId)
-  if (!user) return null
-
-  const accessToken = await server.jwt.sign(payload, {
-    expiresIn: `${envConfig.ACCESS_TOKEN_MAX_AGE}s`
-  })
-
-  // Gia hạn session TTL
-  await refreshSession(server, sessionId)
-
-  return accessToken
+export async function refreshAccessTokenWithClaims(
+  server: FastifyInstance,
+  sessionId: string
+): Promise<{ accessToken: string; claims: JwtPayload } | null> {
+  return refreshAccessFromRefreshToken(server, sessionId)
 }

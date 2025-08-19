@@ -18,6 +18,7 @@ import { envConfig } from './lib/envConfig'
 import { healthcheckRoutes } from './modules/healthcheck'
 import nodemailerPlugin from './plugins/nodemailer'
 import { tenantRoutes } from './modules/tenants/tenant.route'
+import { authenticate as authenticateMiddleware } from './middleware/authenticate'
 
 export const server = fastify({
   logger: {
@@ -58,44 +59,8 @@ server.register(cors, {
   credentials: true
 })
 
-// server.decorate(
-//   'authenticate',
-//   async (request: FastifyRequest, reply: FastifyReply) => {
-//     try {
-//       // Verify JWT từ cookie thay vì header
-//       await request.jwtVerify()
-//     } catch (e) {
-//       return reply.code(401).send({
-//         statusCode: 401,
-//         error: 'Unauthorized',
-//         message: 'Invalid or missing token'
-//       })
-//     }
-//   }
-// )
-
 // Đổi qua dùng access_token
-server.decorate(
-  'authenticate',
-  async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const token = request.cookies.access_token
-      if (!token) {
-        return reply.code(401).send({
-          error: 'Unauthorized',
-          message: 'Missing access token'
-        })
-      }
-
-      request.user = await server.jwt.verify(token)
-    } catch (e) {
-      return reply.code(401).send({
-        error: 'Unauthorized',
-        message: 'Invalid or expired token'
-      })
-    }
-  }
-)
+server.decorate('authenticate', authenticateMiddleware)
 
 server.register(redis)
 

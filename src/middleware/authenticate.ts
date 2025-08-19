@@ -1,61 +1,57 @@
-// lib/middleware/authenticate.ts
+// middleware/authenticate.ts
+
 import { FastifyReply, FastifyRequest } from 'fastify'
-import { envConfig } from '@/lib/envConfig'
-import { setAccessToken } from '@/lib/authCookies'
-import { findUserById } from '@/modules/auth'
+import {
+  setAccessToken,
+  ACCESS_COOKIE,
+  REFRESH_COOKIE
+} from '@/lib/authCookies'
+import { refreshAccessFromRefreshToken } from '@/lib/authTokens'
 
 export async function authenticate(
   request: FastifyRequest,
   reply: FastifyReply
 ) {
   try {
-    const accessToken = request.cookies.access_token
-    if (!accessToken) {
-      return reply
-        .code(401)
-        .send({ error: 'Unauthorized', message: 'Missing access token' })
-    }
+    const accessToken =
+      (request.cookies as any)[ACCESS_COOKIE] ?? request.cookies.access_token
+    const refreshToken =
+      (request.cookies as any)[REFRESH_COOKIE] ?? request.cookies.refresh_token
 
-    try {
-      request.user = await request.server.jwt.verify(accessToken)
-    } catch {
-      const refreshToken = request.cookies.refresh_token
+    const refreshAccessToken = async () => {
       if (!refreshToken) {
         return reply
           .code(401)
           .send({ error: 'Unauthorized', message: 'Missing refresh token' })
       }
 
-      const session = await request.server.redis.get(`session:${refreshToken}`)
-      if (!session) {
-        return reply
-          .code(401)
-          .send({
-            error: 'Unauthorized',
-            message: 'Invalid or expired refresh token'
-          })
+      const refreshed = await refreshAccessFromRefreshToken(
+        request.server,
+        refreshToken
+      )
+
+      if (!refreshed) {
+        return reply.code(401).send({
+          error: 'Unauthorized',
+          message: 'Invalid or expired refresh token'
+        })
       }
 
-      const { userId } = JSON.parse(session)
-      const user = await findUserById(userId)
-      if (!user) {
-        return reply
-          .code(401)
-          .send({ error: 'Unauthorized', message: 'User not found' })
-      }
+      setAccessToken(reply, refreshed.accessToken)
+      request.user = refreshed.claims as any
+      return
+    }
 
-      const payload = {
-        id: user.id,
-        email: user.email,
-        isVerified: user.isVerified
-      }
+    if (!accessToken) {
+      return await refreshAccessToken()
+    }
 
-      const newAccessToken = await request.server.jwt.sign(payload, {
-        expiresIn: `${envConfig.ACCESS_TOKEN_MAX_AGE}s`
-      })
-
-      setAccessToken(reply, newAccessToken)
-      request.user = payload
+    try {
+      // access_token hợp lệ
+      request.user = await request.server.jwt.verify(accessToken)
+      return
+    } catch {
+      return await refreshAccessToken()
     }
   } catch {
     return reply

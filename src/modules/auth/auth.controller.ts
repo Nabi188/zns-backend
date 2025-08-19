@@ -9,15 +9,22 @@ import {
   createSession,
   deleteSession,
   deleteAllSessions,
-  createTokens
+  createTokens,
+  updateSessionTenant
 } from './auth.service'
 import { CreateUserInput, LoginInput, SelectTenantInput } from './auth.schema'
 import { verifyPassword } from '@/utils/hash'
-import { clearAccessToken, clearRefreshToken } from '@/lib/authCookies'
+import {
+  clearAccessToken,
+  clearRefreshToken,
+  REFRESH_COOKIE
+} from '@/lib/authCookies'
 import { setAccessToken, setRefreshToken } from '@/lib/authCookies'
 import { getTenantDetails } from '../tenants/tenant.service'
 import { sendVerificationOTP, verifyOTP } from './verification.service'
 import { VerifyOtpInput } from './verification.schema'
+import chalk from 'chalk'
+import { signAccessFromUserAndSession } from '@/lib/authTokens'
 
 export async function registerUserHandler(
   request: FastifyRequest<{ Body: CreateUserInput }>,
@@ -79,8 +86,6 @@ export async function loginHandler(
       payload
     )
 
-    const sessionId = await createSession(request.server, user.id)
-
     // Set cookies
     setAccessToken(reply, accessToken)
     setRefreshToken(reply, refreshToken)
@@ -105,7 +110,7 @@ export async function loginHandler(
         updatedAt: t.tenant.updatedAt
       }))
     }
-    console.log(res)
+    console.log(chalk.bgGreen('User login:'), res)
 
     return reply.send(res)
   } catch (e) {
@@ -183,19 +188,40 @@ export async function selectTenantHandler(
   const { tenantId } = request.body as SelectTenantInput
 
   try {
-    const tenant = await findUserTenant(user.id, tenantId)
-    if (!tenant) {
-      return reply.code(403).send({ message: 'Access denied' })
+    //Đặt tên là member cho đúng
+    const member = await findUserTenant(user.id, tenantId)
+    if (!member) {
+      return reply
+        .code(403)
+        .send({ error: 'Unauthorized', message: 'Access denied' })
     }
 
-    const accessToken = await request.server.jwt.sign({
-      id: user.id,
-      email: user.email,
-      isVerified: user.isVerified,
-      tenantId,
-      role: tenant.role
-    })
+    const refreshToken =
+      (request.cookies as any)[REFRESH_COOKIE] ?? request.cookies.refresh_token
+    if (!refreshToken) {
+      return reply
+        .code(401)
+        .send({ error: 'Unauthorized', message: 'Missing refresh token' })
+    }
 
+    const updated = await updateSessionTenant(
+      request.server,
+      refreshToken,
+      tenantId,
+      member.role
+    )
+    if (!updated) {
+      return reply.code(401).send({
+        error: 'Unauthorized',
+        message: 'Invalid or expired refresh token'
+      })
+    }
+
+    const { accessToken } = await signAccessFromUserAndSession(
+      request.server,
+      { id: user.id, email: user.email, isVerified: user.isVerified },
+      { tenantId, role: member.role }
+    )
     setAccessToken(reply, accessToken)
 
     return reply.send({
@@ -205,13 +231,13 @@ export async function selectTenantHandler(
         email: user.email,
         currentTenant: {
           tenantId,
-          name: tenant.tenant.name,
-          role: tenant.role
+          name: member.tenant.name,
+          role: member.role
         }
       }
     })
   } catch (e) {
-    console.error(e)
+    request.log.error(e)
     return reply.code(500).send({
       error: 'Internal server error',
       message: 'Select tenant failed'
