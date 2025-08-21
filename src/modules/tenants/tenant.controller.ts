@@ -39,7 +39,7 @@ export async function getTenantHandler(
   }
 
   try {
-    const tenant = await getTenantDetails(userId, tenantId)
+    const tenant = await getTenantDetails(tenantId)
     // console.log('TenantDetail:', tenant)
     return reply.code(200).send(tenant)
   } catch (e) {
@@ -50,3 +50,8 @@ export async function getTenantHandler(
     })
   }
 }
+
+export async function inviteHandler(
+  request: FastifyRequest,
+  reply: FastifyReply
+) {}

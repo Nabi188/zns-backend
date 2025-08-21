@@ -16,41 +16,42 @@ datasource db {
 
 // ENUMS
 enum Role {
-  admin
-  staff
-  finance
+  OWNER
+  ADMIN
+  STAFF
+  FINANCE
 }
 
 enum SubscriptionStatus {
-  active
-  canceled
-  expired
+  ACTIVE
+  CANCELED
+  EXPIRED
 }
 
 enum TransactionStatus {
-  confirmed
-  failed
-  cancelled
+  CONFIRMED
+  FAILED
+  CANCELLED
 }
 
 enum MessageStatus {
-  pending
-  sent
-  delivered
-  failed
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
 }
 
 enum DeliverySpeed {
-  fast
-  normal
-  batch
+  FAST
+  NORMAL
+  BATCH
 }
 
 enum CampaignStatus {
-  draft
-  running
-  completed
-  failed
+  DRAFT
+  RUNNING
+  COMPLETED
+  FAILED
 }
 
 model User {
@@ -64,9 +65,9 @@ model User {
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 
-  tenants     TenantMember[]
-  apikeys     ApiKey[]
-  ownedTenant Tenant[]       @relation("TenantOwner")
+  tenants TenantMember[]
+  apikeys ApiKey[]
+  // ownedTenant Tenant[]       @relation("TenantOwner")
 
   @@map("users")
 }
@@ -74,12 +75,12 @@ model User {
 model Tenant {
   id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name      String
-  ownerId   String   @map("owner_id") @db.Uuid
+  // ownerId   String   @map("owner_id") @db.Uuid
   balance   Int      @default(0)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  owner   User           @relation("TenantOwner", fields: [ownerId], references: [id])
+  // owner   User           @relation("TenantOwner", fields: [ownerId], references: [id])
   members TenantMember[]
 
   // Financial => Tách ra các khoản phí và refund cho rõ ràng
@@ -150,7 +151,7 @@ model SubscriptionCharge {
   amount         Int
   billingPeriod  String            @map("billing_period")
   description    String
-  status         TransactionStatus @default(confirmed)
+  status         TransactionStatus @default(CONFIRMED)
   chargedAt      DateTime          @default(now()) @map("charged_at")
 
   tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -198,7 +199,8 @@ model ZnsTemplate {
   tenantId        String  @map("tenant_id") @db.Uuid
   templateId      String  @unique @map("template_id")
   templateName    String  @map("template_name")
-  isActive        Boolean @map("is_active") //Của hệ thống chứ ko phải của Zalo
+  status          String  @default("PENDING")
+  isActive        Boolean @map("is_active")
   price           Int     @map("price")
   listParams      Json?   @map("template_params")
   previewUrl      String  @map("preview_url")
@@ -218,7 +220,7 @@ model Campaign {
   id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenantId        String         @map("tenant_id") @db.Uuid
   name            String
-  status          CampaignStatus @default(draft)
+  status          CampaignStatus @default(DRAFT)
   totalRecipients Int            @default(0) @map("total_recipients")
   estimatedCost   Int            @default(0) @map("estimated_cost")
   actualCost      Int            @default(0) @map("actual_cost")
@@ -243,7 +245,7 @@ model MessageLog {
   recipientZaloId String        @map("recipient_zalo_id")
   trackingId      String        @unique @map("tracking_id")
   msgId           String?       @map("msg_id")
-  status          MessageStatus @default(pending)
+  status          MessageStatus @default(PENDING)
   deliverySpeed   DeliverySpeed @map("delivery_speed")
   templateData    Json          @map("template_data")
   sentAt          DateTime?     @map("sent_at")
@@ -273,7 +275,7 @@ model MessageCharge {
   deliveryFee  Int               @map("delivery_fee")
   platformFee  Int               @map("platform_fee")
   vatAmount    Int               @map("vat_amount")
-  status       TransactionStatus @default(confirmed)
+  status       TransactionStatus @default(CONFIRMED)
   chargedAt    DateTime          @default(now()) @map("charged_at")
 
   tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -290,7 +292,7 @@ model TopupTransaction {
   amount        Int
   paymentMethod String            @map("payment_method")
   paymentRef    String?           @map("payment_ref")
-  status        TransactionStatus @default(confirmed)
+  status        TransactionStatus @default(CONFIRMED)
   notes         String?
   createdAt     DateTime          @default(now()) @map("created_at")
 
@@ -308,7 +310,7 @@ model RefundTransaction {
   originalChargeType String            @map("original_charge_type")
   amount             Int
   reason             String
-  status             TransactionStatus @default(confirmed)
+  status             TransactionStatus @default(CONFIRMED)
   processedAt        DateTime          @default(now()) @map("processed_at")
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)

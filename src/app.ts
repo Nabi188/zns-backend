@@ -18,7 +18,14 @@ import { envConfig } from './lib/envConfig'
 import { healthcheckRoutes } from './modules/healthcheck'
 import nodemailerPlugin from './plugins/nodemailer'
 import { tenantRoutes } from './modules/tenants/tenant.route'
-import { authenticate as authenticateMiddleware } from './middleware/authenticate'
+import {
+  authenticate,
+  checkOwner,
+  checkAdmin,
+  checkStaff,
+  checkMember
+} from './middlewares'
+import { checkVerified } from './middlewares/authenticate'
 
 export const server = fastify({
   logger: {
@@ -60,7 +67,13 @@ server.register(cors, {
 })
 
 // Đổi qua dùng access_token
-server.decorate('authenticate', authenticateMiddleware)
+server.decorate('authenticate', authenticate)
+server.decorate('checkVerified', checkVerified)
+//Thêm middleware
+server.decorate('checkOwner', checkOwner)
+server.decorate('checkAdmin', checkAdmin)
+server.decorate('checkStaff', checkStaff)
+server.decorate('checkMember', checkMember)
 
 server.register(redis)
 

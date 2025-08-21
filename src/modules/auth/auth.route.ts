@@ -20,7 +20,8 @@ import {
   selectTenantSchema,
   selectTenantResponseSchema,
   meResponseSchema,
-  logoutResponseSchema
+  logoutResponseSchema,
+  logoutAllResponseSchema
 } from './auth.schema'
 import { errorResponseSchema } from '@/schemas/error.schema'
 import {
@@ -80,7 +81,7 @@ async function authRoutes(server: FastifyInstance) {
   router.post(
     '/select-tenant',
     {
-      preHandler: [server.authenticate],
+      preHandler: [server.authenticate, server.checkVerified],
       schema: {
         body: selectTenantSchema,
         response: {
@@ -92,7 +93,7 @@ async function authRoutes(server: FastifyInstance) {
     selectTenantHandler
   )
 
-  server.post(
+  router.post(
     '/logout',
     {
       schema: {
@@ -105,12 +106,12 @@ async function authRoutes(server: FastifyInstance) {
     logoutHandler
   )
 
-  server.post(
+  router.post(
     '/logout/all',
     {
       schema: {
         response: {
-          200: logoutResponseSchema,
+          200: logoutAllResponseSchema,
           500: errorResponseSchema
         }
       }

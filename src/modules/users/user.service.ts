@@ -2,6 +2,10 @@
 
 import { prisma } from '@/lib/prisma'
 
-export async function getUsers() {
-  return prisma.user.findMany()
+export async function getUserIdByEmail(email: string): Promise<string | null> {
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true }
+  })
+  return user?.id || null
 }

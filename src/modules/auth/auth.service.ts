@@ -6,7 +6,9 @@ import { FastifyInstance } from 'fastify'
 import { envConfig } from '@/lib/envConfig'
 import { randomUUID } from 'crypto'
 import { FastifyJWT } from '@fastify/jwt'
-import { refreshAccessFromRefreshToken } from '@/lib/authTokens' // NEW
+import { refreshAccessFromRefreshToken } from '@/lib/authTokens'
+import { Role } from '@/lib/generated/prisma'
+import { scanKeysRedis } from '@/lib/scanKeysRedis'
 
 export async function createUser(input: CreateUserInput) {
   const { password, ...rest } = input
@@ -42,7 +44,6 @@ export async function findUserByEmail(email: string) {
             select: {
               id: true,
               name: true,
-              ownerId: true,
               createdAt: true,
               updatedAt: true
             }
@@ -54,8 +55,8 @@ export async function findUserByEmail(email: string) {
 }
 
 export async function findUserTenant(userId: string, tenantId: string) {
-  return prisma.tenantMember.findFirst({
-    where: { tenantId, userId },
+  return prisma.tenantMember.findUnique({
+    where: { userId_tenantId: { userId, tenantId } },
     select: {
       role: true,
       tenant: { select: { id: true, name: true } }
@@ -63,7 +64,100 @@ export async function findUserTenant(userId: string, tenantId: string) {
   })
 }
 
+export async function getMe(userId: string, tenantId?: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      email: true,
+      phone: true,
+      fullName: true,
+      avatarUrl: true,
+      isVerified: true,
+      createdAt: true,
+      updatedAt: true,
+      tenants: {
+        select: {
+          role: true,
+          tenant: {
+            select: {
+              id: true,
+              name: true,
+              createdAt: true,
+              updatedAt: true
+            }
+          }
+        }
+      }
+    }
+  })
+
+  if (!user) return null
+
+  let currentTenant = null
+  if (tenantId) {
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: {
+        id: true,
+        name: true,
+        balance: true,
+        createdAt: true,
+        updatedAt: true,
+        members: { where: { userId }, select: { role: true } },
+        subscriptions: {
+          where: { status: 'ACTIVE' },
+          orderBy: { currentPeriodEnd: 'desc' },
+          take: 1,
+          select: {
+            plan: {
+              select: {
+                name: true,
+                monthlyFee: true,
+                messageFee: true,
+                maxUsers: true
+              }
+            }
+          }
+        }
+      }
+    })
+
+    if (tenant) {
+      currentTenant = {
+        id: tenant.id,
+        name: tenant.name,
+        role: tenant.members[0].role,
+        balance: tenant.balance,
+        plan: tenant.subscriptions[0].plan,
+        createdAt: tenant.createdAt,
+        updatedAt: tenant.updatedAt
+      }
+    }
+  }
+
+  return {
+    id: user.id,
+    email: user.email,
+    phone: user.phone,
+    fullName: user.fullName,
+    avatarUrl: user.avatarUrl,
+    isVerified: user.isVerified,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+    tenants: user.tenants.map((t) => ({
+      id: t.tenant.id,
+      name: t.tenant.name,
+      role: t.role,
+      createdAt: t.tenant.createdAt,
+      updatedAt: t.tenant.updatedAt
+    })),
+    currentTenant
+  }
+}
+
 export async function findUserById(userId: string) {
+  // [EDIT] giữ nguyên select; đã tương thích schema mới
   return prisma.user.findUnique({
     where: { id: userId },
     select: {
@@ -133,27 +227,35 @@ export async function deleteAllSessions(
   server: FastifyInstance,
   userId: string
 ): Promise<number> {
-  const keys = await server.redis.keys('session:*')
+  const keys = await scanKeysRedis(server.redis, 'session:*')
   if (keys.length === 0) return 0
 
-  const sessions = await server.redis.mget(keys)
-  const userSessionKeys: string[] = []
+  const pipeline = server.redis.pipeline()
+  const toDelete: string[] = []
 
-  sessions.forEach((sessionData, index) => {
-    if (sessionData) {
-      try {
-        const parsed = JSON.parse(sessionData)
-        if (parsed.userId === userId) {
-          userSessionKeys.push(keys[index])
+  for (const key of keys) {
+    pipeline.get(key)
+  }
+  const results = await pipeline.exec()
+
+  if (results) {
+    for (let i = 0; i < results.length; i++) {
+      const [, sessionData] = results[i] || []
+      if (typeof sessionData === 'string') {
+        try {
+          const parsed = JSON.parse(sessionData)
+          if (parsed?.userId === userId) {
+            toDelete.push(keys[i])
+          }
+        } catch (e) {
+          console.error(e)
         }
-      } catch (e) {
-        console.log(e)
       }
     }
-  })
+  }
 
-  if (userSessionKeys.length > 0) {
-    return await server.redis.del(...userSessionKeys)
+  if (toDelete.length > 0) {
+    return await server.redis.del(...toDelete)
   }
   return 0
 }
@@ -182,7 +284,7 @@ export async function updateSessionTenant(
   server: FastifyInstance,
   sessionId: string,
   tenantId: string,
-  role: string
+  role: Role
 ) {
   const key = `session:${sessionId}`
   const current = await server.redis.get(key)

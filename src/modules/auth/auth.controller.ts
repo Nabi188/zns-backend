@@ -10,7 +10,8 @@ import {
   deleteSession,
   deleteAllSessions,
   createTokens,
-  updateSessionTenant
+  updateSessionTenant,
+  getMe
 } from './auth.service'
 import { CreateUserInput, LoginInput, SelectTenantInput } from './auth.schema'
 import { verifyPassword } from '@/utils/hash'
@@ -246,59 +247,26 @@ export async function selectTenantHandler(
 }
 
 export async function meHandler(request: FastifyRequest, reply: FastifyReply) {
-  const user = request.user
-
   try {
-    // Luông phải kiểm tra xem user còn nằm trong tenant không, tránh trương f hợp user bị xoá khỏi tenant rồi mà cookie vẫn còn hạn > Vẫn xem được dữ liệu
-    if (user.tenantId) {
-      const isMember = await findUserTenant(user.id, user.tenantId)
-      if (!isMember) {
-        return reply.code(403).send({
-          error: 'Forbidden',
-          message: 'User is no longer a member of the current tenant'
-        })
-      }
-    }
+    const data = await getMe(request.user.id, request.user.tenantId)
 
-    const fullUser = await findUserById(user.id)
-
-    if (!fullUser) {
+    if (!data) {
       return reply.code(404).send({
         error: 'Not Found',
         message: 'User not found'
       })
     }
 
-    if (!fullUser.isVerified) {
+    if (!data.isVerified) {
       return reply.code(403).send({
         error: 'Not Verified',
         message: 'Please verify your email before continuing'
       })
     }
 
-    const currentTenant = user.tenantId
-      ? await getTenantDetails(user.id, user.tenantId)
-      : null
-
-    // console.log('Current Tenant:', currentTenant)
-
-    const response = {
-      ...fullUser,
-      currentTenant,
-      tenants: fullUser.tenants.map((t) => ({
-        id: t.tenant.id,
-        name: t.tenant.name,
-        role: t.role,
-        createdAt: t.tenant.createdAt,
-        updatedAt: t.tenant.updatedAt
-      }))
-    }
-
-    // console.log('meHandler response:', JSON.stringify(response, null, 2))
-
-    return reply.send(response)
+    return reply.send(data)
   } catch (e) {
-    console.error(e)
+    request.log.error(e)
     return reply.code(500).send({
       error: 'Internal server error',
       message: 'Failed to get user data'
@@ -311,7 +279,7 @@ export async function logoutHandler(
   reply: FastifyReply
 ) {
   try {
-    const sessionId = request.cookies.session_id
+    const sessionId = request.cookies.refresh_token
 
     if (sessionId) {
       await deleteSession(request.server, sessionId)
@@ -347,7 +315,7 @@ export async function logoutAllHandler(
   } catch (e) {
     return reply.code(500).send({
       error: 'Internal server error',
-      message: 'Failed to logout'
+      message: 'Failed to logout all sessions'
     })
   }
 }

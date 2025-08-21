@@ -1,6 +1,13 @@
 import { prisma } from '@/lib/prisma'
-import { CreateTenantInput, UpdateTenantInput } from './tenant.schema'
+import {
+  CreateTenantInput,
+  TenantDetails,
+  UpdateTenantInput
+} from './tenant.schema'
 import { Role } from '@/lib/generated/prisma'
+import { FastifyInstance } from 'fastify'
+import { randomInt } from 'crypto'
+import { scanKeysRedis } from '@/lib/scanKeysRedis'
 
 export async function createTenant(input: CreateTenantInput) {
   const { name, ownerId } = input
@@ -8,11 +15,10 @@ export async function createTenant(input: CreateTenantInput) {
   const tenant = await prisma.tenant.create({
     data: {
       name,
-      ownerId,
       members: {
         create: {
           userId: ownerId,
-          role: Role.admin
+          role: Role.OWNER
         }
       }
     },
@@ -72,80 +78,23 @@ export async function getTenantsByMember(userId: string) {
   return tenants
 }
 
-// export async function getTenantsById(tenantId: string, userId: string) {
-//   const tenant = await prisma.tenant.findUnique({
-//     where: { id: tenantId },
-//     select: {
-//       id: true,
-//       name: true,
-//       owner: {},
-//       balance: true,
-//       zaloOas: true,
-//       znsTemplates: true,
-//       members: {
-//         where: { userId },
-//         select: { role: true }
-//       },
-//       createdAt: true,
-//       updatedAt: true
-//     }
-//   })
-
-//   if (!tenant) return null
-
-//   return {
-//     id: tenant.id,
-//     name: tenant.name,
-//     role: tenant.members[0]?.role ?? null,
-//     createdAt: tenant.createdAt,
-//     updatedAt: tenant.updatedAt
-//   }
-// }
-
-type TenantDetails = {
-  id: string
-  name: string
-  owner: { id: string; fullName: string; email: string }
-  role: Role | null
-  balance: number
-  zaloOas: {
-    id: string
-    oaIdZalo: string
-    oaName: string
-    isActive: boolean
-    createdAt: string
-  }[]
-  znsTemplates: any[]
-  subscription: {
-    id: string
-    status: string
-    currentPeriodStart: Date
-    currentPeriodEnd: Date
-    plan: {
-      id: number
-      name: string
-      monthlyFee: number
-      messageFee: number
-      maxUsers: number
-    }
-  } | null
-  createdAt: Date
-  updatedAt: Date
-} | null
-
 export async function getTenantDetails(
-  userId: string,
   tenantId: string
-): Promise<TenantDetails> {
+): Promise<TenantDetails | null> {
   const tenant = await prisma.tenant.findUnique({
     where: { id: tenantId },
     select: {
       id: true,
       name: true,
-      owner: {
-        select: { id: true, fullName: true, email: true }
-      },
       balance: true,
+      createdAt: true,
+      updatedAt: true,
+      members: {
+        select: {
+          role: true,
+          user: { select: { fullName: true, email: true } }
+        }
+      },
       zaloOas: {
         select: {
           id: true,
@@ -156,12 +105,8 @@ export async function getTenantDetails(
         }
       },
       znsTemplates: true,
-      members: {
-        where: { userId },
-        select: { role: true }
-      },
       subscriptions: {
-        where: { status: 'active' },
+        where: { status: 'ACTIVE' },
         orderBy: { currentPeriodEnd: 'desc' },
         take: 1,
         select: {
@@ -171,7 +116,6 @@ export async function getTenantDetails(
           currentPeriodEnd: true,
           plan: {
             select: {
-              id: true,
               name: true,
               monthlyFee: true,
               messageFee: true,
@@ -179,34 +123,144 @@ export async function getTenantDetails(
             }
           }
         }
-      },
-      createdAt: true,
-      updatedAt: true
+      }
     }
   })
 
   if (!tenant) return null
 
+  const owner = tenant.members.find((m) => m.role === Role.OWNER)
+
   return {
     id: tenant.id,
     name: tenant.name,
     owner: {
-      id: tenant.owner.id,
-      fullName: tenant.owner.fullName,
-      email: tenant.owner.email
+      fullName: owner?.user.fullName ?? '',
+      email: owner?.user.email ?? ''
     },
-    role: tenant.members[0]?.role ?? null,
     balance: tenant.balance,
     zaloOas: tenant.zaloOas.map((oa) => ({
       id: oa.id,
       oaIdZalo: oa.oaIdZalo,
       oaName: oa.oaName,
       isActive: oa.isActive,
-      createdAt: oa.createdAt.toISOString()
+      createdAt: oa.createdAt
     })),
     znsTemplates: tenant.znsTemplates,
     subscription: tenant.subscriptions[0] ?? null,
     createdAt: tenant.createdAt,
     updatedAt: tenant.updatedAt
   }
+}
+
+export async function createInviteCode(
+  server: FastifyInstance,
+  tenantId: string,
+  email: string,
+  role: Role
+) {
+  const expiresIn = 24 * 60 * 60
+  const inviteCode = randomInt(100000, 1000000).toString()
+  const key = `invite:${tenantId}:${email}`
+
+  await server.redis.setex(
+    key,
+    expiresIn,
+    JSON.stringify({ tenantId, email, role, inviteCode, expiresIn })
+  )
+
+  return { inviteCode, key, expiresIn }
+}
+
+export async function getInviteList(server: FastifyInstance, tenantId: string) {
+  const keys = await scanKeysRedis(server.redis, `invite:${tenantId}:*`) // [EDIT]
+  if (!keys.length) return []
+
+  const items = await Promise.all(
+    keys.map(async (key) => {
+      const raw = await server.redis.get(key)
+      if (!raw) return null
+      const ttl = await server.redis.ttl(key)
+      if (ttl <= 0) return null
+      const {
+        tenantId: t,
+        email,
+        role,
+        inviteCode,
+        expiresIn
+      } = JSON.parse(raw)
+      return {
+        key,
+        tenantId: t,
+        email,
+        role: role as Role,
+        inviteCode,
+        expiresIn,
+        ttl
+      }
+    })
+  )
+
+  return items.filter(Boolean) as Array<{
+    key: string
+    tenantId: string
+    email: string
+    role: Role
+    inviteCode: string
+    expiresIn: number
+    ttl: number
+  }>
+}
+
+export async function verifyInviteCode(
+  server: FastifyInstance,
+  tenantId: string,
+  email: string,
+  inviteCode: string
+) {
+  const key = `invite:${tenantId}:${email}`
+  const raw = await server.redis.get(key)
+  if (!raw) return null
+
+  let parsed: any
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return null
+  }
+
+  if (parsed.inviteCode !== inviteCode) return null
+  const ttl = await server.redis.ttl(key)
+  if (ttl <= 0) return null
+
+  await server.redis.del(key)
+
+  return {
+    key,
+    tenantId: parsed.tenantId,
+    email: parsed.email,
+    role: parsed.role as Role,
+    inviteCode: parsed.inviteCode,
+    expiresIn: parsed.expiresIn,
+    ttl
+  }
+}
+
+export async function revokeInvite(
+  server: FastifyInstance,
+  tenantId: string,
+  email: string
+) {
+  const key = `invite:${tenantId}:${email}`
+  const n = await server.redis.del(key)
+  return n > 0
+}
+
+export async function revokeAllInvites(
+  server: FastifyInstance,
+  tenantId: string
+) {
+  const keys = await scanKeysRedis(server.redis, `invite:${tenantId}:*`)
+  if (!keys.length) return 0
+  return server.redis.del(...keys)
 }

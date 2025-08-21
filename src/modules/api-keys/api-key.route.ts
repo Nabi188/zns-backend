@@ -22,6 +22,7 @@ export async function apiKeyRoutes(server: FastifyInstance) {
   router.post(
     '/create',
     {
+      preHandler: [server.authenticate, server.checkAdmin],
       schema: {
         body: createApiKeyRequestSchema,
         response: {

@@ -1,6 +1,9 @@
 // auth.schema.ts => Định nghĩa schema
 import { z } from 'zod'
 import { currentTenantSchema } from '../tenants/tenant.schema'
+import { Role } from '@/lib/generated/prisma'
+
+export const roleEnum = z.enum(Role)
 
 const phoneRegex =
   /^(?:\+84|0)(3[2-9]|5[6|8|9]|7[0|6-9]|8[1-5]|9[0-9])[0-9]{7}$/
@@ -42,7 +45,7 @@ export const loginResponseSchema = z.object({
     z.object({
       tenantId: z.string(),
       name: z.string(),
-      role: z.string(),
+      role: roleEnum,
       createdAt: z.date(),
       updatedAt: z.date()
     })
@@ -52,14 +55,14 @@ export const loginResponseSchema = z.object({
 const meTenantSchema = z.object({
   id: z.string(),
   name: z.string(),
-  role: z.string(),
+  role: roleEnum,
   createdAt: z.date(),
   updatedAt: z.date()
 })
 
 export const meResponseSchema = createUserResponseSchema.extend({
-  currentTenant: currentTenantSchema.nullable(),
-  tenants: z.array(meTenantSchema)
+  currentTenant: currentTenantSchema.nullable().optional(),
+  tenants: z.array(meTenantSchema).nullable().optional()
 })
 
 export const selectTenantSchema = z.object({
@@ -75,13 +78,17 @@ export const selectTenantResponseSchema = z.object({
     currentTenant: z.object({
       tenantId: z.string(),
       name: z.string(),
-      role: z.string()
+      role: roleEnum
     })
   })
 })
 
 export const logoutResponseSchema = z.object({
   message: z.literal('Logout successful')
+})
+
+export const logoutAllResponseSchema = z.object({
+  message: z.literal('Logout all sessions successful')
 })
 
 export type LoginInput = z.infer<typeof loginSchema>

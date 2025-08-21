@@ -59,3 +59,16 @@ export async function authenticate(
       .send({ error: 'Unauthorized', message: 'Authentication failed' })
   }
 }
+
+// Middleware check xem tài khoản verify mail chưa
+export async function checkVerified(
+  request: FastifyRequest,
+  reply: FastifyReply
+) {
+  if (!request.user?.isVerified) {
+    return reply.code(403).send({
+      error: 'Not Verified',
+      message: 'Please verify your email before continuing'
+    })
+  }
+}
