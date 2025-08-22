@@ -52,6 +52,7 @@ export const updateApiKeyParamsSchema = z.object({
 
 export type CreateApiKeyRequest = z.infer<typeof createApiKeyRequestSchema>
 export type ApiKey = z.infer<typeof apiKeyBaseSchema>
+export type GETApiKeysInput = z.infer<typeof getApiKeysQuerySchema>
 export type GetApiKeysResponse = z.infer<typeof getApiKeysResponseSchema>
 export type UpdateApiKeyRequest = z.infer<typeof updateApiKeyRequestSchema>
 export type UpdateApiKeyParams = z.infer<typeof updateApiKeyParamsSchema>

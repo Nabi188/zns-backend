@@ -3,6 +3,7 @@ import { FastifyReply, FastifyRequest } from 'fastify'
 import { createApiKey, getApiKeys, updateApiKey } from './api-key.service'
 import {
   CreateApiKeyRequest,
+  GETApiKeysInput,
   getApiKeysQuerySchema,
   getApiKeysResponseSchema,
   updateApiKeyRequestSchema
@@ -46,7 +47,7 @@ export async function createApiKeyHandler(
 
 export async function getApiKeysHandler(
   request: FastifyRequest<{
-    Querystring: z.infer<typeof getApiKeysQuerySchema>
+    Querystring: GETApiKeysInput
   }>,
   reply: FastifyReply
 ) {

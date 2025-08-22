@@ -47,7 +47,7 @@ export async function healthcheckRoutes(server: FastifyInstance) {
   }
 
   logStatus()
-  setInterval(logStatus, 60000)
+  setInterval(logStatus, 300 * 1000)
 
   server.get('/', async (request, reply) => {
     const plan = await prisma.plan.findFirst({ select: { id: true } })

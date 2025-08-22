@@ -28,7 +28,7 @@ export async function getTenantHandler(
   request: FastifyRequest,
   reply: FastifyReply
 ) {
-  const userId = request.user.id
+  // const userId = request.user.id
   const tenantId = request.user.tenantId
 
   if (!tenantId) {
@@ -40,7 +40,7 @@ export async function getTenantHandler(
 
   try {
     const tenant = await getTenantDetails(tenantId)
-    // console.log('TenantDetail:', tenant)
+    console.log('TenantDetail:', tenant)
     return reply.code(200).send(tenant)
   } catch (e) {
     chalk.red(console.log(e))
