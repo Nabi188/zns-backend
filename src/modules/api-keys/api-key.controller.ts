@@ -101,12 +101,34 @@ export async function deleteApiKeyHandler(
   request: FastifyRequest,
   reply: FastifyReply
 ) {
-  const { id } = request.params as UpdateApiKeyParams
-  const tenantId = request.tenantAccess?.tenantId as string
+  const { id } = request.body as UpdateApiKeyParams
+  const tenantId = request.tenantAccess?.tenantId
+
+  if (!tenantId) {
+    return reply.status(400).send({
+      error: 'BadRequest',
+      message: 'Select a tenant before continuing'
+    })
+  }
+
   try {
     await deleteApiKey(id, tenantId)
-    return reply.status(200).send({ message: 'Delete API key successful' })
-  } catch (e) {
-    request.log.error(e)
+    return reply.status(200).send({
+      message: 'Delete API key successful'
+    })
+  } catch (error) {
+    request.log.error(error)
+
+    if (error instanceof Error && error.message === 'API key not found') {
+      return reply.status(404).send({
+        error: 'Not Found',
+        message: 'API key not found'
+      })
+    }
+
+    return reply.status(500).send({
+      error: 'Internal Server Error',
+      message: 'Failed to delete API key'
+    })
   }
 }

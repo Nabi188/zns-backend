@@ -102,11 +102,19 @@ export async function updateApiKey(
 }
 
 export async function deleteApiKey(id: string, tenantId: string) {
-  // Dùng deleteMany cho an toanf => Luôn
-  const res = await prisma.apiKey.deleteMany({
+  const existingKey = await prisma.apiKey.findFirst({
     where: { id, tenantId }
   })
-  return res.count
+
+  if (!existingKey) {
+    throw new Error('API key not found')
+  }
+
+  await prisma.apiKey.delete({
+    where: { id }
+  })
+
+  return true
 }
 
 export async function verifyApiKey(apiKey: string) {
