@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import {
   createApiKeyHandler,
+  deleteApiKeyHandler,
   getApiKeysHandler,
   updateApiKeyHandler
 } from './api-key.controller'
@@ -11,7 +12,9 @@ import {
   getApiKeysQuerySchema,
   updateApiKeyRequestSchema,
   apiKeyBaseSchema,
-  updateApiKeyParamsSchema
+  updateApiKeyParamsSchema,
+  deleteApiKeyResponseSchema,
+  apiKeyWithCreatorSchema
 } from './api-key.schema'
 import { errorResponseSchema } from '@/schemas/error.schema'
 import { ZodTypeProvider } from 'fastify-type-provider-zod'
@@ -26,8 +29,8 @@ export async function apiKeyRoutes(server: FastifyInstance) {
       schema: {
         body: createApiKeyRequestSchema,
         response: {
-          201: createApiKeyResponseSchema,
-          409: errorResponseSchema,
+          200: createApiKeyResponseSchema,
+          400: errorResponseSchema,
           500: errorResponseSchema
         }
       }
@@ -38,8 +41,8 @@ export async function apiKeyRoutes(server: FastifyInstance) {
   router.get(
     '/',
     {
+      preHandler: [server.authenticate, server.checkAdmin],
       schema: {
-        querystring: getApiKeysQuerySchema,
         response: {
           200: getApiKeysResponseSchema,
           500: errorResponseSchema
@@ -48,9 +51,11 @@ export async function apiKeyRoutes(server: FastifyInstance) {
     },
     getApiKeysHandler
   )
+
   router.patch(
     '/:id',
     {
+      preHandler: [server.authenticate, server.checkAdmin],
       schema: {
         params: updateApiKeyParamsSchema,
         body: updateApiKeyRequestSchema,
@@ -62,5 +67,21 @@ export async function apiKeyRoutes(server: FastifyInstance) {
       }
     },
     updateApiKeyHandler
+  )
+
+  router.post(
+    '/delete',
+    {
+      preHandler: [server.authenticate, server.checkAdmin],
+      schema: {
+        body: updateApiKeyParamsSchema,
+        response: {
+          200: deleteApiKeyResponseSchema,
+          404: errorResponseSchema,
+          500: errorResponseSchema
+        }
+      }
+    },
+    deleteApiKeyHandler
   )
 }

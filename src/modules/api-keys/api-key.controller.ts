@@ -1,108 +1,112 @@
 // api-key.controller.ts
 import { FastifyReply, FastifyRequest } from 'fastify'
-import { createApiKey, getApiKeys, updateApiKey } from './api-key.service'
 import {
-  CreateApiKeyRequest,
-  GETApiKeysInput,
-  getApiKeysQuerySchema,
-  getApiKeysResponseSchema,
-  updateApiKeyRequestSchema
+  createApiKey,
+  deleteApiKey,
+  getApiKeys,
+  updateApiKey
+} from './api-key.service'
+import {
+  CreateApiKeyInput,
+  UpdateApiKeyInput,
+  UpdateApiKeyParams
 } from './api-key.schema'
-import { Prisma } from '@prisma/client'
-import { z } from 'zod'
 
 export async function createApiKeyHandler(
-  request: FastifyRequest<{ Body: CreateApiKeyRequest }>,
+  request: FastifyRequest,
   reply: FastifyReply
 ) {
-  const input = request.body
+  const input = request.body as CreateApiKeyInput
+  const creatorId = request.user.id
+  const tenantId = request.tenantAccess?.tenantId
 
-  const creatorId = 'jwt-token'
-  // FIXME: CreatorID bóc từ JWT từ Middleware
+  if (!tenantId) {
+    return reply.status(400).send({
+      error: 'BadRequest',
+      message: 'Select a tenant before continuing'
+    })
+  }
 
   try {
-    const apiKey = await createApiKey(input, creatorId)
-    return reply.status(201).send(apiKey)
+    const apiKey = await createApiKey(tenantId, creatorId, input)
+    return reply.status(200).send(apiKey)
   } catch (error) {
     request.log.error(error)
 
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === 'P2002'
-    ) {
-      return reply.status(409).send({
-        error: 'Conflict',
-        message: 'API key already exists',
-        code: 'DUPLICATE_ENTRY'
-      })
-    }
-
     return reply.status(500).send({
       error: 'Internal Server Error',
-      message: 'Failed to create API key',
-      code: 'INTERNAL_ERROR'
+      message: 'Failed to create API key'
     })
   }
 }
 
 export async function getApiKeysHandler(
-  request: FastifyRequest<{
-    Querystring: GETApiKeysInput
-  }>,
+  request: FastifyRequest,
   reply: FastifyReply
 ) {
-  const { tenantId } = request.query
-
+  const tenantId = request.tenantAccess?.tenantId
+  if (!tenantId) {
+    return reply.status(400).send({
+      error: 'BadRequest',
+      message: 'Select a tenant before continuing'
+    })
+  }
   try {
     const keys = await getApiKeys(tenantId)
-    const validatedKeys = getApiKeysResponseSchema.parse(keys)
-    return reply.status(200).send(validatedKeys)
+    return reply.status(200).send(keys)
   } catch (error) {
     request.log.error(error)
 
-    if (error instanceof z.ZodError) {
-      request.log.error('Validation error:', error.flatten())
-    }
-
     return reply.status(500).send({
       error: 'Internal Server Error',
-      message: 'Failed to retrieve API keys',
-      code: 'INTERNAL_ERROR'
+      message: 'Failed to retrieve API keys'
     })
   }
 }
 
 export async function updateApiKeyHandler(
-  request: FastifyRequest<{
-    Params: { id: string }
-    Body: z.infer<typeof updateApiKeyRequestSchema>
-  }>,
+  request: FastifyRequest,
   reply: FastifyReply
 ) {
-  const { id } = request.params
-  const data = request.body
+  const { id } = request.params as { id: string }
+  const tenantId = request.tenantAccess?.tenantId
+  const data = request.body as UpdateApiKeyInput
+
+  if (!tenantId) {
+    return reply.status(400).send({
+      error: 'BadRequest',
+      message: 'Select a tenant before continuing'
+    })
+  }
 
   try {
-    const updatedKey = await updateApiKey(id, data)
+    const updatedKey = await updateApiKey(id, tenantId, data)
+    if (!updatedKey) {
+      return reply.status(404).send({
+        error: 'Not Found',
+        message: 'API key not found'
+      })
+    }
     return reply.status(200).send(updatedKey)
   } catch (error) {
     request.log.error(error)
-
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === 'P2025'
-    ) {
-      return reply.status(404).send({
-        error: 'Not Found',
-        message: 'API key not found',
-        code: 'NOT_FOUND'
-      })
-    }
-
     return reply.status(500).send({
       error: 'Internal Server Error',
-      message: 'Failed to update API key',
-      code: 'INTERNAL_ERROR'
+      message: 'Failed to update API key'
     })
+  }
+}
+
+export async function deleteApiKeyHandler(
+  request: FastifyRequest,
+  reply: FastifyReply
+) {
+  const { id } = request.params as UpdateApiKeyParams
+  const tenantId = request.tenantAccess?.tenantId as string
+  try {
+    await deleteApiKey(id, tenantId)
+    return reply.status(200).send({ message: 'Delete API key successful' })
+  } catch (e) {
+    request.log.error(e)
   }
 }

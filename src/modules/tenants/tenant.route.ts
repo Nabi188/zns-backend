@@ -29,7 +29,7 @@ async function tenantRoutes(server: FastifyInstance) {
   router.get(
     '/details',
     {
-      preHandler: [server.authenticate, server.checkOwner],
+      preHandler: [server.authenticate, server.checkMember],
       schema: {
         response: {
           200: tenantDetailsSchema,

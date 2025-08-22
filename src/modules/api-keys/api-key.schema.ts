@@ -13,7 +13,6 @@ export const apiKeyBaseSchema = z.object({
 })
 
 export const createApiKeyRequestSchema = z.object({
-  tenantId: z.string(),
   name: z.string().min(1, 'API Key name is required'),
   isActive: z.boolean()
 })
@@ -26,10 +25,11 @@ export const getApiKeysQuerySchema = z.object({
   tenantId: z.string()
 })
 
-// Không dùng schema của user vì bảo mật => Không hiện email và điện thoại cho người khác
+// Không dùng schema của user vì bảo mật => Không hiện điện thoại cho người khác
 export const apiKeyCreatorSchema = z.object({
   id: z.string(),
-  fullName: z.string()
+  fullName: z.string(),
+  email: z.email()
 })
 
 export const apiKeyWithCreatorSchema = apiKeyBaseSchema
@@ -50,9 +50,13 @@ export const updateApiKeyParamsSchema = z.object({
   id: z.string()
 })
 
-export type CreateApiKeyRequest = z.infer<typeof createApiKeyRequestSchema>
+export const deleteApiKeyResponseSchema = z.object({
+  message: z.literal('Delete API key successful')
+})
+
+export type CreateApiKeyInput = z.infer<typeof createApiKeyRequestSchema>
 export type ApiKey = z.infer<typeof apiKeyBaseSchema>
-export type GETApiKeysInput = z.infer<typeof getApiKeysQuerySchema>
+export type GetApiKeysInput = z.infer<typeof getApiKeysQuerySchema>
 export type GetApiKeysResponse = z.infer<typeof getApiKeysResponseSchema>
-export type UpdateApiKeyRequest = z.infer<typeof updateApiKeyRequestSchema>
+export type UpdateApiKeyInput = z.infer<typeof updateApiKeyRequestSchema>
 export type UpdateApiKeyParams = z.infer<typeof updateApiKeyParamsSchema>

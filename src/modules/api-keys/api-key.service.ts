@@ -3,29 +3,36 @@
 import { prisma } from '@/lib/prisma'
 import { generateApiKey } from '@/utils/hash'
 import bcrypt from 'bcryptjs'
-import { CreateApiKeyRequest } from './api-key.schema'
+import { CreateApiKeyInput } from './api-key.schema'
 
 export async function createApiKey(
-  input: CreateApiKeyRequest,
-  creatorId: string
+  tenantId: string,
+  creatorId: string,
+  input: CreateApiKeyInput
 ) {
   const { rawKey, prefix, keyHash } = await generateApiKey()
 
   const apiKey = await prisma.apiKey.create({
     data: {
-      ...input,
+      tenantId,
       creatorId,
+      name: input.name,
+      isActive: input.isActive,
       prefix,
       keyHash
+    },
+    select: {
+      id: true,
+      tenantId: true,
+      creatorId: true,
+      prefix: true,
+      name: true,
+      isActive: true,
+      createdAt: true
     }
   })
 
-  const { keyHash: _, ...firstResponseData } = apiKey
-
-  return {
-    ...firstResponseData,
-    rawKey
-  }
+  return { ...apiKey, rawKey }
 }
 
 export async function getApiKeys(tenantId: string) {
@@ -36,7 +43,8 @@ export async function getApiKeys(tenantId: string) {
       creator: {
         select: {
           id: true,
-          fullName: true
+          fullName: true,
+          email: true
         }
       },
       tenant: {
@@ -52,7 +60,6 @@ export async function getApiKeys(tenantId: string) {
   })
 
   const apiKeys = keys.map((key) => {
-    // Check xem còn ở trong tổ chức ko? Nếu ko thì cảnh báo trên FE
     const isCreatorActive = key.tenant.members.some(
       (member) => member.userId === key.creator.id
     )
@@ -71,38 +78,35 @@ export async function getApiKeys(tenantId: string) {
 
 export async function updateApiKey(
   id: string,
+  tenantId: string,
   data: { name?: string; isActive?: boolean }
 ) {
-  const updatedKey = await prisma.apiKey.update({
-    where: { id },
-    data,
+  const res = await prisma.apiKey.updateMany({
+    where: { id, tenantId },
+    data
+  })
+  if (res.count === 0) return null
+
+  return prisma.apiKey.findFirst({
+    where: { id, tenantId },
     select: {
       id: true,
-      name: true,
-      prefix: true,
-      isActive: true,
-      createdAt: true,
       tenantId: true,
-      creatorId: true
+      creatorId: true,
+      prefix: true,
+      name: true,
+      isActive: true,
+      createdAt: true
     }
   })
-  return updatedKey
 }
 
-export async function deleteApiKey(id: string) {
-  const deletedKey = await prisma.apiKey.delete({
-    where: { id },
-    select: {
-      id: true,
-      name: true,
-      prefix: true,
-      isActive: true,
-      createdAt: true,
-      tenantId: true,
-      creatorId: true
-    }
+export async function deleteApiKey(id: string, tenantId: string) {
+  // Dùng deleteMany cho an toanf => Luôn
+  const res = await prisma.apiKey.deleteMany({
+    where: { id, tenantId }
   })
-  return deletedKey
+  return res.count
 }
 
 export async function verifyApiKey(apiKey: string) {
