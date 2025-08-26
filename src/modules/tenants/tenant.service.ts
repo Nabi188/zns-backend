@@ -2,9 +2,10 @@ import { prisma } from '@/lib/prisma'
 import {
   CreateTenantInput,
   TenantDetails,
+  TenantMember,
   UpdateTenantInput
 } from './tenant.schema'
-import { Role } from '@/lib/generated/prisma'
+import { Role, SubscriptionStatus } from '@/lib/generated/prisma'
 import { FastifyInstance } from 'fastify'
 import { randomInt } from 'crypto'
 import { scanKeysRedis } from '@/lib/scanKeysRedis'
@@ -12,22 +13,33 @@ import { scanKeysRedis } from '@/lib/scanKeysRedis'
 export async function createTenant(input: CreateTenantInput) {
   const { name, ownerId } = input
 
+  const freePlan = await prisma.plan.findUnique({
+    where: { name: 'FREE' }
+  })
+  if (!freePlan)
+    throw new Error('FREE plan not found. Please seed plans first.')
+
+  const now = new Date()
+  const LIFETIME_END = new Date('2099-12-31T23:59:59.999Z')
+
   const tenant = await prisma.tenant.create({
     data: {
       name,
       members: {
+        create: { userId: ownerId, role: Role.OWNER }
+      },
+      subscriptions: {
         create: {
-          userId: ownerId,
-          role: Role.OWNER
+          planId: freePlan.id,
+          status: SubscriptionStatus.ACTIVE,
+          currentPeriodStart: now,
+          currentPeriodEnd: LIFETIME_END
         }
       }
     },
     include: {
-      members: {
-        include: {
-          user: true
-        }
-      }
+      members: { include: { user: true } },
+      subscriptions: { include: { plan: true } }
     }
   })
 
@@ -39,7 +51,8 @@ export async function createTenant(input: CreateTenantInput) {
       email: m.user.email,
       role: m.role,
       joinedAt: m.joinedAt
-    }))
+    })),
+    subscription: tenant.subscriptions[0].plan.name
   }
 }
 
@@ -92,7 +105,8 @@ export async function getTenantDetails(
       members: {
         select: {
           role: true,
-          user: { select: { fullName: true, email: true } }
+          joinedAt: true,
+          user: { select: { id: true, fullName: true, email: true } }
         }
       },
       zaloOas: {
@@ -131,6 +145,14 @@ export async function getTenantDetails(
 
   const owner = tenant.members.find((m) => m.role === Role.OWNER)
 
+  const members: TenantMember[] = tenant.members.map((m) => ({
+    userId: m.user.id,
+    fullName: m.user.fullName ?? '',
+    email: m.user.email ?? '',
+    role: m.role,
+    joinedAt: m.joinedAt
+  }))
+
   return {
     id: tenant.id,
     name: tenant.name,
@@ -138,6 +160,7 @@ export async function getTenantDetails(
       fullName: owner?.user.fullName ?? '',
       email: owner?.user.email ?? ''
     },
+    members,
     balance: tenant.balance,
     zaloOas: tenant.zaloOas.map((oa) => ({
       id: oa.id,

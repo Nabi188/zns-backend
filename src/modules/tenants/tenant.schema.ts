@@ -35,7 +35,8 @@ export const updateTenantSchema = z.object({
 export const createTenantResponseSchema = tenantSchema.extend({
   id: z.string(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  subscription: z.string()
 })
 
 export const tenantOwnerSchema = z.object({
@@ -73,7 +74,7 @@ export const subscriptionSchema = z.object({
 })
 
 // omit members vì API này không cần trả về thông tin thành viên
-export const tenantDetailsSchema = tenantSchema.omit({ members: true }).extend({
+export const tenantDetailsSchema = tenantSchema.extend({
   id: z.string(),
   owner: tenantOwnerSchema,
   zaloOas: z.array(zaloOASchema),
@@ -122,3 +123,4 @@ export type CreateTenantBody = z.infer<typeof createTenantBodySchema>
 export type TenantDetails = z.infer<typeof tenantDetailsSchema>
 export type UpdateMemberInput = z.infer<typeof updateMemberSchema>
 export type MemberJoinInput = z.infer<typeof memberJoinSchema>
+export type TenantMember = z.infer<typeof tenantMemberSchema>

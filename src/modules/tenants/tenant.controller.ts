@@ -13,7 +13,7 @@ export async function createTenantHandler(
 
   try {
     const tenant = await createTenant({ name, ownerId } as CreateTenantInput)
-    console.log('Tenant raw:', tenant)
+    // console.log('Tenant raw:', tenant)
     return reply.code(201).send(tenant)
   } catch (e) {
     console.error(e)
