@@ -1,20 +1,19 @@
 // src/modules/zoa/zoa.controller.ts
 import { FastifyReply, FastifyRequest } from 'fastify'
-import { OauthExchangeInput } from './zoa.schema'
+import { oauthExchangeSchema } from './zoa.schema'
 import { exchangeToken } from './zoa.client'
 import { upsertZaloOaByToken } from './zoa.service'
 import { fetchZnsTemplates } from '@/modules/zns/zns.service'
 
-export async function oauthExchange(
-  req: FastifyRequest<{ Body: OauthExchangeInput }>,
-  reply: FastifyReply
-) {
+export async function oauthExchange(req: FastifyRequest, reply: FastifyReply) {
   if (!req.tenantAccess) {
     return reply.code(401).send({ error: 'unauthorized' })
   }
 
+  const { oaIdZalo, code, fetchTemplates, offset, limit, status } =
+    oauthExchangeSchema.parse((req as any).body)
+
   const { tenantId } = req.tenantAccess
-  const { oaIdZalo, code, fetchTemplates, offset, limit, status } = req.body
 
   try {
     const tok = await exchangeToken(code)
