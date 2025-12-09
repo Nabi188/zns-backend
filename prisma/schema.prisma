@@ -197,11 +197,12 @@ model ApiKey {
 model ZnsTemplate {
   id              String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenantId        String  @map("tenant_id") @db.Uuid
+  oaId            String  @map("oa_id")
   templateId      String  @unique @map("template_id")
   templateName    String  @map("template_name")
   status          String  @default("PENDING")
   isActive        Boolean @map("is_active")
-  price           Int     @map("price")
+  price           Int     @default(0) @map("price")
   listParams      Json?   @map("template_params")
   previewUrl      String  @map("preview_url")
   timeout         Int
