@@ -14,7 +14,10 @@ const envSchema = z.object({
   SMTP_HOST: z.string(),
   SMTP_USER: z.string(),
   SMTP_PASS: z.string(),
-  NODE_ENV: z.string()
+  NODE_ENV: z.string(),
+  ZALO_APP_ID: z.string(),
+  ZALO_APP_SECRET: z.string(),
+  ENCRYPTION_KEY: z.string()
 })
 
 const env = {
@@ -29,7 +32,10 @@ const env = {
   SMTP_HOST: process.env.SMTP_HOST,
   SMTP_USER: process.env.SMTP_USER,
   SMTP_PASS: process.env.SMTP_PASS,
-  NODE_ENV: process.env.NODE_ENV
+  NODE_ENV: process.env.NODE_ENV,
+  ZALO_APP_ID: process.env.ZALO_APP_ID,
+  ZALO_APP_SECRET: process.env.ZALO_APP_SECRET,
+  ENCRYPTION_KEY: process.env.ENCRYPTION_KEY
 }
 
 const parsedEnv = envSchema.safeParse(env)
