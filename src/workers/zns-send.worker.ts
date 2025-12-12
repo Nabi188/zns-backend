@@ -26,7 +26,8 @@ async function sendToZalo(accessToken: string, job: ZnsSendJob) {
 export const znsSendWorker = new Worker<ZnsSendJob>(
   'zns:send',
   async (job) => {
-    const { tenantId, oaIdZalo, trackingId } = job.data
+    const { tenantId, oaIdZalo, trackingId, templateId, phone, templateData } =
+      job.data
     const { accessToken } = await getActiveOaAccessToken(tenantId, oaIdZalo)
 
     const resp = await sendToZalo(accessToken, job.data)
@@ -37,6 +38,11 @@ export const znsSendWorker = new Worker<ZnsSendJob>(
       resp?.msgId ??
       null
 
+    const log = await prisma.messageLog.findFirst({
+      where: { tenantId, trackingId },
+      select: { id: true }
+    })
+
     await prisma.messageLog.updateMany({
       where: { tenantId, trackingId },
       data: {
@@ -46,6 +52,42 @@ export const znsSendWorker = new Worker<ZnsSendJob>(
         errorMessage: null
       }
     })
+
+    const tpl = await prisma.znsTemplate.findUnique({
+      where: { templateId },
+      select: { price: true }
+    })
+    // ĐIều chỉnh lại giá sau khi hoàn thiện trước khi vào product
+    const baseZnsFee = Number(tpl?.price ?? 0)
+    const deliveryFee = 0
+    const platformFee = 100
+    const preVat = baseZnsFee + deliveryFee + platformFee
+    const vatAmount = Math.round(preVat * 0.1)
+    const amount = preVat + vatAmount
+
+    if (log) {
+      await prisma.messageCharge.upsert({
+        where: { messageLogId: log.id },
+        update: {
+          amount,
+          baseZnsFee,
+          deliveryFee,
+          platformFee,
+          vatAmount,
+          status: 'CONFIRMED'
+        },
+        create: {
+          tenantId,
+          messageLogId: log.id,
+          amount,
+          baseZnsFee,
+          deliveryFee,
+          platformFee,
+          vatAmount,
+          status: 'CONFIRMED'
+        }
+      })
+    }
 
     return resp
   },

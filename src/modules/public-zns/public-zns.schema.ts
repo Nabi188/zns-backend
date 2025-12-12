@@ -10,8 +10,8 @@ export const publicSendBodySchema = z.object({
 })
 
 export const publicSendResponseSchema = z.object({
-  status: z.enum(['QUEUED', 'SENT']).default('SENT'),
-  zalo: z.unknown().optional()
+  status: z.literal('QUEUED'),
+  trackingId: z.string()
 })
 
 export type PublicSendBody = z.infer<typeof publicSendBodySchema>
