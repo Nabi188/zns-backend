@@ -243,7 +243,7 @@ model MessageLog {
   templateId      String        @map("template_id")
   campaignId      String?       @map("campaign_id") @db.Uuid
   recipientPhone  String        @map("recipient_phone")
-  recipientZaloId String        @map("recipient_zalo_id")
+  recipientZaloId String?       @map("recipient_zalo_id")
   trackingId      String        @unique @map("tracking_id")
   msgId           String?       @map("msg_id")
   status          MessageStatus @default(PENDING)
@@ -261,6 +261,7 @@ model MessageLog {
   campaign      Campaign?      @relation(fields: [campaignId], references: [id])
   messageCharge MessageCharge?
 
+  @@unique([tenantId, trackingId], name: "uniq_tenant_tracking")
   @@index([tenantId, createdAt])
   @@index([status, createdAt])
   @@index([campaignId, status])
