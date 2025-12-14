@@ -1,3 +1,4 @@
+//src/lib/envConfig.ts
 import 'dotenv/config'
 import { z } from 'zod'
 import chalk from 'chalk'
@@ -17,7 +18,13 @@ const envSchema = z.object({
   NODE_ENV: z.string(),
   ZALO_APP_ID: z.string(),
   ZALO_APP_SECRET: z.string(),
-  ENCRYPTION_KEY: z.string()
+  ENCRYPTION_KEY: z.string(),
+  SEPAY_WEBHOOK_API_KEY: z.string(),
+  TOPUP_MEMO_PREFIX: z.string(),
+  TOPUP_INTENT_TTL_SECONDS: z.coerce.number(),
+  TOPUP_IDEMPOTENCY_TTL_SECONDS: z.coerce.number(),
+  TOPUP_BANK_NAME: z.string(),
+  TOPUP_BANK_ACCOUNT: z.coerce.number()
 })
 
 const env = {
@@ -35,7 +42,13 @@ const env = {
   NODE_ENV: process.env.NODE_ENV,
   ZALO_APP_ID: process.env.ZALO_APP_ID,
   ZALO_APP_SECRET: process.env.ZALO_APP_SECRET,
-  ENCRYPTION_KEY: process.env.ENCRYPTION_KEY
+  ENCRYPTION_KEY: process.env.ENCRYPTION_KEY,
+  SEPAY_WEBHOOK_API_KEY: process.env.SEPAY_WEBHOOK_API_KEY,
+  TOPUP_MEMO_PREFIX: process.env.TOPUP_MEMO_PREFIX,
+  TOPUP_INTENT_TTL_SECONDS: process.env.TOPUP_INTENT_TTL_SECONDS,
+  TOPUP_IDEMPOTENCY_TTL_SECONDS: process.env.TOPUP_IDEMPOTENCY_TTL_SECONDS,
+  TOPUP_BANK_NAME: process.env.TOPUP_BANK_NAME,
+  TOPUP_BANK_ACCOUNT: process.env.TOPUP_BANK_ACCOUNT
 }
 
 const parsedEnv = envSchema.safeParse(env)

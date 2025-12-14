@@ -295,7 +295,7 @@ model TopupTransaction {
   tenantId      String            @map("tenant_id") @db.Uuid
   amount        Int
   paymentMethod String            @map("payment_method")
-  paymentRef    String?           @map("payment_ref")
+  paymentRef    String?           @unique @map("payment_ref")
   status        TransactionStatus @default(CONFIRMED)
   notes         String?
   createdAt     DateTime          @default(now()) @map("created_at")
