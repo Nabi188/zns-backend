@@ -1,3 +1,5 @@
+//src/workers/zns-send.worker.ts
+
 import { Worker } from 'bullmq'
 import { redisOpts } from '@/queues/redis'
 import type { ZnsSendJob } from '@/queues/queue.schema'
@@ -29,6 +31,13 @@ export const znsSendWorker = new Worker<ZnsSendJob>(
     const { accessToken } = await getActiveOaAccessToken(tenantId, oaIdZalo)
 
     const resp = await sendToZalo(accessToken, job.data)
+    console.log('[ZALO RESPONSE]', {
+      trackingId,
+      templateId,
+      phone: job.data.phone,
+      resp
+    })
+
     const msgId =
       resp?.data?.msgId ??
       resp?.data?.message_id ??

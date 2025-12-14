@@ -1,3 +1,4 @@
+//src/queues/zns-send.queue.ts
 import { Queue } from 'bullmq'
 import { redisOpts } from './redis'
 import type { ZnsSendJob } from './queue.schema'

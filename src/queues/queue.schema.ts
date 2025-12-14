@@ -1,3 +1,4 @@
+//src/queues/queue.schema.ts
 import { z } from 'zod'
 
 export const znsSendJobSchema = z.object({
