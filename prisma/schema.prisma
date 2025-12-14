@@ -205,6 +205,7 @@ model ZnsTemplate {
   isActive        Boolean @map("is_active")
   price           Int     @default(0) @map("price")
   listParams      Json?   @map("template_params")
+  sampleData      Json?   @map("sample_data")
   previewUrl      String  @map("preview_url")
   timeout         Int
   templateQuality String? @map("template_quality")

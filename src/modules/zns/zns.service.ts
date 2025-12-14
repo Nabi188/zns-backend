@@ -95,21 +95,41 @@ export async function syncZnsTemplates(params: {
     oaIdZalo
   )
 
-  const list = await fetchZnsTemplates(accessToken, { offset, limit })
+  const listJson = await zaloListTemplates(accessToken, { offset, limit })
+  const items: any[] = Array.isArray(listJson?.data) ? listJson.data : []
+  const total: number =
+    typeof listJson?.metadata?.total === 'number'
+      ? listJson.metadata.total
+      : items.length
 
   let inserted = 0
   let updated = 0
 
-  for (const it of list.items) {
+  for (const it of items) {
     const templateIdStr = String(it.templateId ?? it.template_id ?? '')
     if (!templateIdStr) continue
 
-    const info = await fetchZnsTemplateInfo(accessToken, templateIdStr)
+    const [infoRes, sampleRes] = await Promise.allSettled([
+      zaloGetTemplateInfo(accessToken, templateIdStr),
+      zaloGetTemplateSample(accessToken, templateIdStr)
+    ])
+
+    const info =
+      infoRes.status === 'fulfilled' ? (infoRes.value?.data ?? {}) : {}
+    const sampleData =
+      sampleRes.status === 'fulfilled' ? (sampleRes.value?.data ?? null) : null
+
     const priceRaw = info?.price
     const priceInt =
       typeof priceRaw === 'string' || typeof priceRaw === 'number'
         ? Math.round(parseFloat(String(priceRaw))) || 0
         : 0
+
+    const statusStr = String(info?.status ?? it.status ?? '').toUpperCase()
+    const isActive =
+      statusStr === 'ENABLE' ||
+      statusStr === 'APPROVED' ||
+      statusStr === 'ACTIVE'
 
     const data = {
       tenantId,
@@ -117,13 +137,14 @@ export async function syncZnsTemplates(params: {
       templateId: templateIdStr,
       templateName: info?.templateName ?? it.templateName ?? templateIdStr,
       status: info?.status ?? it.status ?? 'PENDING',
-      isActive: statusToActive(info?.status ?? it.status),
+      isActive,
       price: priceInt,
       listParams: info?.listParams ?? null,
       previewUrl: info?.previewUrl ?? '',
       timeout: typeof info?.timeout === 'number' ? info.timeout : 0,
       templateQuality: info?.templateQuality ?? it.templateQuality ?? null,
-      templateTag: info?.templateTag ?? ''
+      templateTag: info?.templateTag ?? '',
+      sampleData
     }
 
     const exists = await prisma.znsTemplate.findUnique({
@@ -145,8 +166,8 @@ export async function syncZnsTemplates(params: {
     synced: inserted + updated,
     inserted,
     updated,
-    offset: list.offset,
-    limit: list.limit,
-    total: list.total
+    offset,
+    limit,
+    total
   }
 }

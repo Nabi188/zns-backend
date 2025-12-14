@@ -25,7 +25,10 @@ export async function listTemplates(req: FastifyRequest, reply: FastifyReply) {
       req.tenantAccess.tenantId,
       query.oaIdZalo
     )
-    const result = await fetchZnsTemplates(accessToken, query)
+    const result = await fetchZnsTemplates(accessToken, {
+      offset: query.offset,
+      limit: query.limit
+    })
     return reply.code(200).send(znsListResponseSchema.parse(result))
   } catch (e: any) {
     const sc = e?.statusCode
@@ -100,9 +103,7 @@ export async function syncTemplates(req: FastifyRequest, reply: FastifyReply) {
       tenantId: req.tenantAccess.tenantId,
       oaIdZalo: query.oaIdZalo,
       offset: query.offset,
-      limit: query.limit,
-      status: query.status,
-      filterPreset: query.filterPreset
+      limit: query.limit
     })
     return reply.code(200).send(znsSyncResponseSchema.parse(result))
   } catch (e: any) {
