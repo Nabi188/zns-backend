@@ -21,13 +21,15 @@ export async function oauthExchange(req: FastifyRequest, reply: FastifyReply) {
   const { tenantId } = req.tenantAccess
 
   try {
-    const { oaIdZalo, code, fetchTemplates, offset, limit, status } =
+    // BỎ status/filterPreset: chỉ còn offset, limit
+    const { oaIdZalo, code, fetchTemplates, offset, limit } =
       oauthExchangeSchema.parse((req as any).body)
 
     req.log.info({ oaIdZalo }, 'oauth_exchange_start')
 
     const tok = await exchangeToken(code)
     const info = await getOaInfo(tok.access_token)
+
     req.log.info(
       { hasAccess: !!tok?.access_token },
       'oauth_exchange_got_tokens'
@@ -41,15 +43,16 @@ export async function oauthExchange(req: FastifyRequest, reply: FastifyReply) {
       oaName: info?.name || oaIdZalo,
       oaMeta: info
     })
+
     req.log.info({ oaId: saved.id }, 'oauth_exchange_saved_oa')
 
     let templates: unknown = null
     if (fetchTemplates) {
       try {
+        // gọi list templates chỉ với offset/limit theo luồng mới
         templates = await fetchZnsTemplates(tok.access_token, {
           offset,
-          limit,
-          status
+          limit
         })
       } catch (e) {
         req.log.warn({ err: e }, 'fetch_zns_templates_failed')
@@ -63,7 +66,8 @@ export async function oauthExchange(req: FastifyRequest, reply: FastifyReply) {
         oaIdZalo: saved.oaIdZalo,
         oaName: saved.oaName,
         isActive: saved.isActive,
-        createdAt: saved.createdAt.toISOString()
+        createdAt: saved.createdAt.toISOString(),
+        oaMeta: (saved as any).oaMeta ?? null
       },
       templates
     })
@@ -99,16 +103,7 @@ export async function listZaloOaHandler(
     pageSize: q.pageSize
   })
 
-  const mapped = items.map((oa) => ({
-    id: oa.id,
-    oaIdZalo: oa.oaIdZalo,
-    oaName: oa.oaName,
-    isActive: oa.isActive,
-    createdAt: oa.createdAt,
-    oaMeta: (oa as any).oaMeta ?? null
-  }))
-
-  return reply.send({ items: mapped, meta: { page, pageSize, total } })
+  return reply.send({ items, meta: { page, pageSize, total } })
 }
 
 export async function getZaloOaDetailsHandler(

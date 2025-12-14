@@ -1,4 +1,3 @@
-// src/modules/zoa/zoa.service.ts
 import { prisma } from '@/lib/prisma'
 import { encryptToken, decryptToken } from '@/lib/zalo/tokens'
 import { UpdateZaloOaInput } from './zoa.schema'
@@ -157,7 +156,8 @@ export async function listZaloOa(params: {
     oaIdZalo: x.oaIdZalo,
     oaName: x.oaName,
     isActive: x.isActive,
-    createdAt: x.createdAt.toISOString()
+    createdAt: x.createdAt.toISOString(),
+    oaMeta: x.oaMeta ?? null
   }))
 
   return { items, total, page, pageSize }
@@ -171,7 +171,8 @@ export async function getZaloOaByOaIdZalo(tenantId: string, oaIdZalo: string) {
       oaIdZalo: true,
       oaName: true,
       isActive: true,
-      createdAt: true
+      createdAt: true,
+      oaMeta: true
     }
   })
   return oa
