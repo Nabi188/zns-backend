@@ -1,10 +1,17 @@
+//src/modules/topup/topup.controller.ts
 import { FastifyReply, FastifyRequest } from 'fastify'
 import {
   createTopupIntentSchema,
   topupIntentResponseSchema,
-  sepayWebhookPayloadSchema
+  sepayWebhookPayloadSchema,
+  topupIntentStatusQuerySchema,
+  topupIntentStatusResponseSchema
 } from './topup.schema'
-import { createTopupIntent, handleSePayWebhook } from './topup.service'
+import {
+  createTopupIntent,
+  getTopupIntentStatus,
+  handleSePayWebhook
+} from './topup.service'
 import { envConfig } from '@/lib/envConfig'
 
 export async function createIntentHandler(
@@ -35,4 +42,22 @@ export async function sepayWebhookHandler(
   const result = await handleSePayWebhook(req.server, payload)
 
   return reply.code(200).send({ ok: true, ...result })
+}
+
+export async function getTopupIntentStatusHandler(
+  req: FastifyRequest,
+  reply: FastifyReply
+) {
+  if (!req.tenantAccess) {
+    return reply.code(401).send({ error: 'unauthorized' })
+  }
+
+  const query = topupIntentStatusQuerySchema.parse(req.query)
+
+  const result = await getTopupIntentStatus(req.server, {
+    tenantId: req.tenantAccess.tenantId,
+    memo: query.memo
+  })
+
+  return reply.send(topupIntentStatusResponseSchema.parse(result))
 }

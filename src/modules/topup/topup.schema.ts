@@ -32,3 +32,20 @@ export const sepayWebhookPayloadSchema = z.object({
   description: z.string().optional()
 })
 export type SePayWebhookPayload = z.infer<typeof sepayWebhookPayloadSchema>
+
+export const topupIntentStatusQuerySchema = z.object({
+  memo: z.string().min(4)
+})
+
+export const topupIntentStatusResponseSchema = z.object({
+  status: z.enum(['PENDING', 'SUCCESS']),
+  amount: z.number().optional(),
+  createdAt: z.string().optional()
+})
+
+export type TopupIntentStatusQuery = z.infer<
+  typeof topupIntentStatusQuerySchema
+>
+export type TopupIntentStatusResponse = z.infer<
+  typeof topupIntentStatusResponseSchema
+>

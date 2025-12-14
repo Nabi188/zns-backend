@@ -175,3 +175,31 @@ export async function handleSePayWebhook(
     memo
   }
 }
+
+export async function getTopupIntentStatus(
+  fastify: FastifyInstance,
+  params: { tenantId: string; memo: string }
+) {
+  const { tenantId, memo } = params
+  const since = new Date(Date.now() - 10 * 60 * 1000)
+
+  const tx = await prisma.topupTransaction.findFirst({
+    where: {
+      tenantId,
+      status: 'CONFIRMED',
+      createdAt: { gte: since },
+      notes: { contains: memo }
+    },
+    orderBy: { createdAt: 'desc' }
+  })
+
+  if (!tx) {
+    return { status: 'PENDING' as const }
+  }
+
+  return {
+    status: 'SUCCESS' as const,
+    amount: tx.amount,
+    createdAt: tx.createdAt.toISOString()
+  }
+}

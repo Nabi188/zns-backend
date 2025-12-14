@@ -3,15 +3,21 @@ import { ZodTypeProvider } from 'fastify-type-provider-zod'
 import {
   createTopupIntentSchema,
   topupIntentResponseSchema,
-  sepayWebhookPayloadSchema
+  sepayWebhookPayloadSchema,
+  topupIntentStatusQuerySchema,
+  topupIntentStatusResponseSchema
 } from './topup.schema'
-import { createIntentHandler, sepayWebhookHandler } from './topup.controller'
+import {
+  createIntentHandler,
+  getTopupIntentStatusHandler,
+  sepayWebhookHandler
+} from './topup.controller'
 import { errorResponseSchema } from '@/schemas/error.schema'
 
 export async function topupRoutes(app: FastifyInstance) {
-  const r = app.withTypeProvider<ZodTypeProvider>()
+  const router = app.withTypeProvider<ZodTypeProvider>()
 
-  r.post(
+  router.post(
     '/topup/intent',
     {
       preHandler: [app.authenticate, app.checkMember],
@@ -28,7 +34,7 @@ export async function topupRoutes(app: FastifyInstance) {
     createIntentHandler
   )
 
-  r.post(
+  router.post(
     '/topup/sepay/webhook',
     {
       schema: {
@@ -43,5 +49,20 @@ export async function topupRoutes(app: FastifyInstance) {
       }
     },
     sepayWebhookHandler
+  )
+
+  router.get(
+    '/topup/intent/status',
+    {
+      preHandler: [app.authenticate, app.checkMember],
+      schema: {
+        querystring: topupIntentStatusQuerySchema,
+        response: {
+          200: topupIntentStatusResponseSchema,
+          401: errorResponseSchema
+        }
+      }
+    },
+    getTopupIntentStatusHandler
   )
 }
