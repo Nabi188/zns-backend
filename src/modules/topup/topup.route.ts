@@ -38,14 +38,7 @@ export async function topupRoutes(app: FastifyInstance) {
     '/topup/sepay/webhook',
     {
       schema: {
-        body: sepayWebhookPayloadSchema,
-        response: {
-          200: {
-            type: 'object',
-            properties: { ok: { type: 'boolean' } },
-            additionalProperties: true
-          }
-        }
+        body: sepayWebhookPayloadSchema
       }
     },
     sepayWebhookHandler

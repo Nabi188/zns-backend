@@ -24,7 +24,7 @@ const envSchema = z.object({
   TOPUP_INTENT_TTL_SECONDS: z.coerce.number(),
   TOPUP_IDEMPOTENCY_TTL_SECONDS: z.coerce.number(),
   TOPUP_BANK_NAME: z.string(),
-  TOPUP_BANK_ACCOUNT: z.coerce.number()
+  TOPUP_BANK_ACCOUNT: z.string()
 })
 
 const env = {
