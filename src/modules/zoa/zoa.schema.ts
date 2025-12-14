@@ -1,5 +1,7 @@
-// zoa.schema.ts
+// src/modules/zoa/zoa.schema.ts
 import { z } from 'zod'
+
+const oaMetaSchema = z.any().nullable().optional()
 
 export const zaloOaBase = z.object({
   oaIdZalo: z.string(),
@@ -37,8 +39,47 @@ export const oauthExchangeResponseSchema = z.object({
     oaIdZalo: z.string(),
     oaName: z.string(),
     isActive: z.boolean(),
-    createdAt: z.string()
+    createdAt: z.string(),
+    oaMeta: oaMetaSchema
   }),
   templates: z.unknown().optional().nullable()
 })
 export type OauthExchangeResponse = z.infer<typeof oauthExchangeResponseSchema>
+
+export const listZaloOaQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  isActive: z
+    .union([z.literal('true'), z.literal('false')])
+    .optional()
+    .transform((v) => (v === undefined ? undefined : v === 'true')),
+  q: z.string().trim().optional()
+})
+
+export const zaloOaPublicItemSchema = z.object({
+  id: z.string(),
+  oaIdZalo: z.string(),
+  oaName: z.string(),
+  isActive: z.boolean(),
+  createdAt: z.string(),
+  oaMeta: oaMetaSchema
+})
+
+export const listZaloOaResponseSchema = z.object({
+  items: z.array(zaloOaPublicItemSchema),
+  meta: z.object({
+    page: z.number(),
+    pageSize: z.number(),
+    total: z.number()
+  })
+})
+
+export const zaloOaParamsSchema = z.object({
+  oaIdZalo: z.string().min(10)
+})
+
+export const zaloOaDetailsResponseSchema = zaloOaPublicItemSchema
+
+export const deleteZaloOaResponseSchema = z.object({
+  success: z.boolean()
+})

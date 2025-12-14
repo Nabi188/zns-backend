@@ -1,3 +1,4 @@
+// src/modules/zoa/zoa.client.ts
 import { envConfig } from '@/lib/envConfig'
 
 const ZALO_OAUTH_TOKEN_URL = 'https://oauth.zaloapp.com/v4/oa/access_token'
@@ -16,13 +17,36 @@ export async function exchangeToken(code: string) {
     },
     body: form
   })
-  if (!res.ok) {
-    const text = await res.text().catch(() => '')
-    const err: any = new Error(
-      `Zalo token exchange failed: ${res.status} ${text}`
-    )
-    err.statusCode = res.status
-    throw err
+
+  const text = await res.text().catch(() => '')
+  let json: any = {}
+  try {
+    json = JSON.parse(text)
+  } catch {
+    json = { raw: text }
   }
-  return res.json()
+
+  if (!res.ok || json?.error) {
+    const e: any = new Error('zalo_token_exchange_failed')
+    e.statusCode = res.status || 400
+    e.payload = json
+    throw e
+  }
+
+  return json
+}
+
+export async function getOaInfo(accessToken: string) {
+  const res = await fetch('https://openapi.zalo.me/v2.0/oa/getoa', {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json', access_token: accessToken }
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok || json?.error) {
+    const e: any = new Error('zalo_get_oa_failed')
+    e.statusCode = res.status || 400
+    e.payload = json
+    throw e
+  }
+  return json.data as { oaid: string; name: string }
 }

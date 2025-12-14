@@ -1,9 +1,8 @@
-// src/queues/zns-send.queue.ts
 import { Queue } from 'bullmq'
 import { redisOpts } from './redis'
 import type { ZnsSendJob } from './queue.schema'
 
-export const znsSendQueue = new Queue<ZnsSendJob>('zns:send', {
+export const znsSendQueue = new Queue<ZnsSendJob>('zns-send', {
   connection: redisOpts,
   defaultJobOptions: {
     attempts: 5,

@@ -12,7 +12,7 @@ async function publicZnsRoutes(server: FastifyInstance) {
   const router = server.withTypeProvider<ZodTypeProvider>()
 
   router.post(
-    '/v1/public/zns/send',
+    '/send',
     {
       schema: {
         body: publicSendBodySchema,

@@ -11,6 +11,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // ENUMS
@@ -168,6 +169,7 @@ model ZaloOa {
   accessToken  String   @map("access_token")
   refreshToken String   @map("refresh_token")
   isActive     Boolean  @map("is_active")
+  oaMeta       Json?    @map("oa_meta")
   createdAt    DateTime @default(now()) @map("created_at")
 
   tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)

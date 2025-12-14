@@ -5,8 +5,12 @@
   "main": "index.js",
   "scripts": {
     "dev": "tsnd --respawn --transpile-only --require tsconfig-paths/register --exit-child --watch .env src/app.ts",
+    "dev:api": "tsnd --respawn --transpile-only --require tsconfig-paths/register --exit-child --watch .env src/app.ts",
+    "dev:worker:zns": "tsnd --respawn --transpile-only --require tsconfig-paths/register --exit-child --watch .env src/workers/zns-send.worker.ts",
     "build": "tsc",
     "start": "node dist/app.js",
+    "start:api": "node dist/app.js",
+    "start:worker:zns": "node dist/workers/zns-send.worker.js",
     "prettier": "prettier --check .",
     "prettier:fix": "prettier --write .",
     "seed": "npx ts-node -r tsconfig-paths/register src/lib/seed.ts"

@@ -26,6 +26,9 @@ import {
   checkMember
 } from './middlewares'
 import { checkVerified } from './middlewares/authenticate'
+import { publicZnsRoutes } from './modules/public-zns'
+import { znsRoutes } from './modules/zns'
+import { zoaRoutes } from './modules/zoa/zoa.route'
 
 export const server = fastify({
   logger: {
@@ -85,6 +88,9 @@ async function registerRoutes() {
   await server.register(apiKeyRoutes, { prefix: '/api/api-keys' })
   await server.register(tenantRoutes, { prefix: '/api/tenants' })
   await server.register(healthcheckRoutes, { prefix: '/api/healthcheck' })
+  await server.register(publicZnsRoutes, { prefix: '/api/public-zns' })
+  await server.register(znsRoutes, { prefix: '/api/zns' })
+  await server.register(zoaRoutes, { prefix: '/api/zoa' })
 }
 
 async function main() {

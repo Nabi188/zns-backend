@@ -1,4 +1,3 @@
-// src/workers/zns-send.worker.ts
 import { Worker } from 'bullmq'
 import { redisOpts } from '@/queues/redis'
 import type { ZnsSendJob } from '@/queues/queue.schema'
@@ -24,10 +23,9 @@ async function sendToZalo(accessToken: string, job: ZnsSendJob) {
 }
 
 export const znsSendWorker = new Worker<ZnsSendJob>(
-  'zns:send',
+  'zns-send',
   async (job) => {
-    const { tenantId, oaIdZalo, trackingId, templateId, phone, templateData } =
-      job.data
+    const { tenantId, oaIdZalo, trackingId, templateId } = job.data
     const { accessToken } = await getActiveOaAccessToken(tenantId, oaIdZalo)
 
     const resp = await sendToZalo(accessToken, job.data)
@@ -37,11 +35,6 @@ export const znsSendWorker = new Worker<ZnsSendJob>(
       resp?.message_id ??
       resp?.msgId ??
       null
-
-    const log = await prisma.messageLog.findFirst({
-      where: { tenantId, trackingId },
-      select: { id: true }
-    })
 
     await prisma.messageLog.updateMany({
       where: { tenantId, trackingId },
@@ -57,7 +50,6 @@ export const znsSendWorker = new Worker<ZnsSendJob>(
       where: { templateId },
       select: { price: true }
     })
-    // ĐIều chỉnh lại giá sau khi hoàn thiện trước khi vào product
     const baseZnsFee = Number(tpl?.price ?? 0)
     const deliveryFee = 0
     const platformFee = 100
@@ -65,6 +57,10 @@ export const znsSendWorker = new Worker<ZnsSendJob>(
     const vatAmount = Math.round(preVat * 0.1)
     const amount = preVat + vatAmount
 
+    const log = await prisma.messageLog.findFirst({
+      where: { tenantId, trackingId },
+      select: { id: true }
+    })
     if (log) {
       await prisma.messageCharge.upsert({
         where: { messageLogId: log.id },
