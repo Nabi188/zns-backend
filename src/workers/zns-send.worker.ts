@@ -73,7 +73,7 @@ export const znsSendWorker = new Worker<ZnsSendJob>(
       resp
     })
 
-    if (resp?.error && resp.error !== 0) {
+    if (resp?.error !== 0) {
       await prisma.messageLog.updateMany({
         where: { tenantId, trackingId },
         data: {
@@ -82,15 +82,10 @@ export const znsSendWorker = new Worker<ZnsSendJob>(
           errorMessage: JSON.stringify(resp)
         }
       })
-      throw new Error(`ZALO_ERROR_${resp.error}`)
+      throw new Error(`ZALO_ERROR_${resp?.error}`)
     }
 
-    const msgId =
-      resp?.data?.msgId ??
-      resp?.data?.message_id ??
-      resp?.message_id ??
-      resp?.msgId ??
-      null
+    const msgId: string | null = resp?.data?.msg_id ?? null
 
     await prisma.$transaction(async (tx) => {
       await tx.messageLog.updateMany({
@@ -98,7 +93,7 @@ export const znsSendWorker = new Worker<ZnsSendJob>(
         data: {
           status: 'SENT',
           sentAt: new Date(),
-          msgId: msgId ?? undefined,
+          msgId,
           errorMessage: null
         }
       })
@@ -107,7 +102,6 @@ export const znsSendWorker = new Worker<ZnsSendJob>(
         where: { tenantId, trackingId },
         select: { id: true }
       })
-
       if (!log) return
 
       await tx.messageCharge.upsert({

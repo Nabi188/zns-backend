@@ -30,6 +30,7 @@ import { publicZnsRoutes } from './modules/public-zns'
 import { znsRoutes } from './modules/zns'
 import { zoaRoutes } from './modules/zoa/zoa.route'
 import { topupRoutes } from './modules/topup'
+import { messageLogRoutes } from './modules/message-log'
 
 export const server = fastify({
   logger: {
@@ -93,6 +94,7 @@ async function registerRoutes() {
   await server.register(znsRoutes, { prefix: '/api/zns' })
   await server.register(zoaRoutes, { prefix: '/api/zoa' })
   await server.register(topupRoutes, { prefix: '/api' })
+  await server.register(messageLogRoutes, { prefix: '/api' })
 }
 
 async function main() {
