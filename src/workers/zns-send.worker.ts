@@ -33,6 +33,35 @@ export const znsSendWorker = new Worker<ZnsSendJob>(
   async (job) => {
     const { tenantId, oaIdZalo, trackingId, templateId } = job.data
 
+    const tpl = await prisma.znsTemplate.findUnique({
+      where: { templateId },
+      select: { price: true }
+    })
+
+    const baseZnsFee = Number(tpl?.price ?? 0)
+    const deliveryFee = 0
+    const platformFee = 100
+    const preVat = baseZnsFee + deliveryFee + platformFee
+    const vatAmount = Math.round(preVat * 0.1)
+    const amount = preVat + vatAmount
+
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { balance: true }
+    })
+
+    if (!tenant || tenant.balance < amount) {
+      await prisma.messageLog.updateMany({
+        where: { tenantId, trackingId },
+        data: {
+          status: 'FAILED',
+          failedAt: new Date(),
+          errorMessage: 'INSUFFICIENT_BALANCE'
+        }
+      })
+      throw new Error('INSUFFICIENT_BALANCE')
+    }
+
     const { accessToken } = await getActiveOaAccessToken(tenantId, oaIdZalo)
 
     const resp = await sendToZalo(accessToken, job.data)
@@ -53,7 +82,6 @@ export const znsSendWorker = new Worker<ZnsSendJob>(
           errorMessage: JSON.stringify(resp)
         }
       })
-
       throw new Error(`ZALO_ERROR_${resp.error}`)
     }
 
@@ -64,35 +92,25 @@ export const znsSendWorker = new Worker<ZnsSendJob>(
       resp?.msgId ??
       null
 
-    await prisma.messageLog.updateMany({
-      where: { tenantId, trackingId },
-      data: {
-        status: 'SENT',
-        sentAt: new Date(),
-        msgId: msgId ?? undefined,
-        errorMessage: null
-      }
-    })
+    await prisma.$transaction(async (tx) => {
+      await tx.messageLog.updateMany({
+        where: { tenantId, trackingId },
+        data: {
+          status: 'SENT',
+          sentAt: new Date(),
+          msgId: msgId ?? undefined,
+          errorMessage: null
+        }
+      })
 
-    const tpl = await prisma.znsTemplate.findUnique({
-      where: { templateId },
-      select: { price: true }
-    })
+      const log = await tx.messageLog.findFirst({
+        where: { tenantId, trackingId },
+        select: { id: true }
+      })
 
-    const baseZnsFee = Number(tpl?.price ?? 0)
-    const deliveryFee = 0
-    const platformFee = 100
-    const preVat = baseZnsFee + deliveryFee + platformFee
-    const vatAmount = Math.round(preVat * 0.1)
-    const amount = preVat + vatAmount
+      if (!log) return
 
-    const log = await prisma.messageLog.findFirst({
-      where: { tenantId, trackingId },
-      select: { id: true }
-    })
-
-    if (log) {
-      await prisma.messageCharge.upsert({
+      await tx.messageCharge.upsert({
         where: { messageLogId: log.id },
         update: {
           amount,
@@ -113,7 +131,14 @@ export const znsSendWorker = new Worker<ZnsSendJob>(
           status: 'CONFIRMED'
         }
       })
-    }
+
+      await tx.tenant.update({
+        where: { id: tenantId },
+        data: {
+          balance: { decrement: amount }
+        }
+      })
+    })
 
     return resp
   },
