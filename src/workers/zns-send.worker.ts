@@ -1,5 +1,3 @@
-//src/workers/zns-send.worker.ts
-
 import { Worker } from 'bullmq'
 import { redisOpts } from '@/queues/redis'
 import type { ZnsSendJob } from '@/queues/queue.schema'
@@ -11,7 +9,10 @@ const ZALO_SEND_URL = 'https://business.openapi.zalo.me/message/template'
 async function sendToZalo(accessToken: string, job: ZnsSendJob) {
   const res = await fetch(ZALO_SEND_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', access_token: accessToken },
+    headers: {
+      'Content-Type': 'application/json',
+      access_token: accessToken
+    },
     body: JSON.stringify({
       phone: job.phone,
       template_id: job.templateId,
@@ -19,8 +20,11 @@ async function sendToZalo(accessToken: string, job: ZnsSendJob) {
       tracking_id: job.trackingId
     })
   })
+
   const json = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(JSON.stringify(json))
+  if (!res.ok) {
+    throw new Error(JSON.stringify(json))
+  }
   return json
 }
 
@@ -28,15 +32,30 @@ export const znsSendWorker = new Worker<ZnsSendJob>(
   'zns-send',
   async (job) => {
     const { tenantId, oaIdZalo, trackingId, templateId } = job.data
+
     const { accessToken } = await getActiveOaAccessToken(tenantId, oaIdZalo)
 
     const resp = await sendToZalo(accessToken, job.data)
+
     console.log('[ZALO RESPONSE]', {
       trackingId,
       templateId,
       phone: job.data.phone,
       resp
     })
+
+    if (resp?.error && resp.error !== 0) {
+      await prisma.messageLog.updateMany({
+        where: { tenantId, trackingId },
+        data: {
+          status: 'FAILED',
+          failedAt: new Date(),
+          errorMessage: JSON.stringify(resp)
+        }
+      })
+
+      throw new Error(`ZALO_ERROR_${resp.error}`)
+    }
 
     const msgId =
       resp?.data?.msgId ??
@@ -59,6 +78,7 @@ export const znsSendWorker = new Worker<ZnsSendJob>(
       where: { templateId },
       select: { price: true }
     })
+
     const baseZnsFee = Number(tpl?.price ?? 0)
     const deliveryFee = 0
     const platformFee = 100
@@ -70,6 +90,7 @@ export const znsSendWorker = new Worker<ZnsSendJob>(
       where: { tenantId, trackingId },
       select: { id: true }
     })
+
     if (log) {
       await prisma.messageCharge.upsert({
         where: { messageLogId: log.id },
@@ -96,12 +117,16 @@ export const znsSendWorker = new Worker<ZnsSendJob>(
 
     return resp
   },
-  { connection: redisOpts, concurrency: 5 }
+  {
+    connection: redisOpts,
+    concurrency: 5
+  }
 )
 
 znsSendWorker.on('failed', async (job, err) => {
   if (!job) return
   const { tenantId, trackingId } = job.data
+
   await prisma.messageLog.updateMany({
     where: { tenantId, trackingId },
     data: {
